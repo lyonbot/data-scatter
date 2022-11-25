@@ -17,7 +17,6 @@ describe('AutoScatter', () => {
   test('works', () => {
     const storage = new ScatterStorage({
       schemaRegistry: getSchemaRegistry(),
-      extractNodeFrom: ['task']
     });
 
     const nodes = [] as ScatterNodeInfo[]

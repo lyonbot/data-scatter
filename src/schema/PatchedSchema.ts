@@ -17,6 +17,7 @@ let uuidCounter = 0;
 const patchedMark = Symbol('isPatchedSchema')
 
 export interface PatchedSchemaMeta {
+  /** the shortest schema name, like `task`, or `task/items` if is anonymous schema */
   schemaId: string;
   uuid: string;
   /** @internal */
@@ -26,7 +27,12 @@ export interface PatchedSchemaMeta {
 }
 
 export interface PatchedSchema<T> extends SchemaBase {
-  [patchedMark]: PatchedSchemaMeta
+  /** internal marker */
+  readonly [patchedMark]: PatchedSchemaMeta
+
+  /** the shortest schema name, like `task`, or `task/items` if is anonymous schema */
+  readonly $schemaId: string;
+
   extends?: PatchedSchema<any>[]
 
   isObject(): this is PatchedObjectSchema<T>;
@@ -34,6 +40,8 @@ export interface PatchedSchema<T> extends SchemaBase {
 
   getDirectChildSchema<K extends keyof T>(key: K): PatchedSchema<T[K]> | null
   getDirectChildSchema(key: string | number): PatchedSchema<any> | null
+
+  /** query another schema via data path */
   getSchemaAtPath(path: string | number | (string | number)[]): PatchedSchema<any> | null
 }
 
@@ -65,6 +73,7 @@ export function createPatchedSchema<T>(
 
   // ans[patchedMark] = meta
   Object.defineProperty(ans, patchedMark, { enumerable: false, configurable: false, value: meta })
+  Object.defineProperty(ans, '$schemaId', { enumerable: false, configurable: false, value: schemaId })
 
   initCtx.generatorQueue.push((function* initializer() {
     if (Array.isArray(schema.extends) && schema.extends.length) {

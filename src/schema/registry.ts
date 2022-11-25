@@ -85,11 +85,20 @@ class SchemaRegistry<T extends TypeLUT> {
   /**
    * get a registered and patched schema, which provides some useful methods
    * 
-   * @param id 
+   * @param query - schema id, or expression like `"task/properties/foo"`
    * @returns PatchedSchema object
    */
-  get<K extends keyof T>(id: K): PatchedSchema<T[K]> {
-    return this.schemaLUT[id]
+  get<K extends keyof T>(query: K): PatchedSchema<T[K]>
+  get(query: string): PatchedSchema<any> | Nil
+  get(query: string) {
+    const ans = this.schemaLUT[query] as PatchedSchema<any> | Nil
+    if (!ans && query.includes('/')) {
+      const parts = query.split('/')
+      let ptr: any = this.schemaLUT[parts.shift()!]
+      while (ptr && parts.length) ptr = ptr[parts.shift()!]
+      if (isPatchedSchema(ptr)) return ptr
+    }
+    return ans
   }
 
   /**

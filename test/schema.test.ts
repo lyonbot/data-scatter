@@ -52,6 +52,9 @@ describe('SchemaRegistry', () => {
     assert(false === ('permissions' in $person.properties))  // special properties of "admin"
     assert('name' in $person.properties)
 
+    const $alsoPerson = registry.get('person/properties/father');
+    expect($alsoPerson).toBe($person);
+
     // cross-reference!
 
     expect($person.getDirectChildSchema('employer')).toBe($entrepreneur)
@@ -93,8 +96,8 @@ describe('SchemaRegistry', () => {
     expect(() => {
       createSchemaRegistry({
         foo: { type: 'string', extends: ['bar'] },
-        bar: { type: 'string', extends: ['baz']},
-        baz: { type: 'string', extends: ['foo']},
+        bar: { type: 'string', extends: ['baz'] },
+        baz: { type: 'string', extends: ['foo'] },
       })
     }).toThrowError('Cycle-dependencies found when "baz" extends "foo"')
   })
@@ -152,6 +155,9 @@ describe('SchemaRegistry', () => {
     // alias
 
     expect(registry.get('mazzAlias')).toBe(registry.get('mazz'))
+    expect(registry.get('mazz/properties/hello')).toBe(registry.get('mazz'))
+    expect(registry.get('mazz/properties/x')).toBeUndefined()
+    expect(registry.get('mazz/properties')).toBeUndefined()
 
     // -------------------------------
     // object
@@ -159,6 +165,7 @@ describe('SchemaRegistry', () => {
     const $mazz = registry.get('mazz')
 
     assert(isPatchedSchema($mazz))
+    expect($mazz.$schemaId).toBe('mazz')
     assert($mazz.isObject())
     expect($mazz.type).toBe('object')
     expect(Object.keys($mazz.properties)).toEqual(['hello'])
@@ -182,6 +189,7 @@ describe('SchemaRegistry', () => {
 
     const $arr1 = registry.get('fov').getSchemaAtPath('arr1')!
 
+    expect($arr1.$schemaId).toBe('fov/properties/arr1')
     assert($arr1.isArray())
     expect($arr1.items.type).toBe('string')
     expect($arr1.getDirectChildSchema('length')!.type).toBe('number')

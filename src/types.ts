@@ -1,5 +1,7 @@
 export type Nil = null | undefined;
 
+export type KeyOf<T> = string & keyof T
+
 /** 
  * return the type of `Object.assign(T, U)`
  * 

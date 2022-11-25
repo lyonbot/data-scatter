@@ -54,10 +54,15 @@ const $entrepreneur = registry.get('entrepreneur');
 const $person = registry.get('person');
 
 assert($entrepreneur.isObject());
-expect($entrepreneur.title).toBe('A person with ambitions!'); // <- extra notes
+expect($entrepreneur.title).toBe('A person with ambitions!'); // <- read extra notes
 
+// query via data path - from a schema
 expect($person.getSchemaAtPath('children[0].father')).toBe($person);
 expect($person.getSchemaAtPath('children[0].employer')).toBe($entrepreneur);
+
+// (not recommended) query via schema path - from registry
+const $alsoPerson = registry.get('person/properties/father');
+expect($alsoPerson).toBe($person);
 ```
 
 - **Immutable**: you can't modify a registry, but you can create a new one based on it.
@@ -92,6 +97,56 @@ task.subTasks = [{ name: 'buy flowers' }];
 const subTask1 = storage.getNodeInfo(task.subTasks[0]);
 expect(subTask1.schema).toBe(mySchemaRegistry.get('task'));
 ```
+
+### Generate ID for Nodes
+
+When load / dump nodes, we use nodeId to replace current existing nodes
+
+By default nodes has random ID like `task#efe903` (schemaId + random number)
+
+You can also implement `function nodeIdGenerator(storage, schema): string` and give to **ScatterStorage**.
+
+### Load and Dump Nodes
+
+**ScatterStorage** provides these methods for you. While loading / dumping, all the referencing relations are retained.
+
+- `load()`
+
+  Load nodes into this storage.
+
+  If met same **nodeId** in current storage:
+
+  - Same Schema? Discard current node's content and use loaded data.
+  - Different? an **Error** will be thrown.
+
+- `dump()`
+
+  Save nodes
+
+- `clear()`
+
+  delete all nodes of this storage. all the existing proxies of nodes, will lost data.
+
+The dumped format is:
+
+```js
+[
+  {
+    nodeId: 'xxxxxxxxxxx',
+    schemaId: 'task',
+    value: {
+      name: 'go shopping',
+      // subTasks is a ref, not storaged here
+    },
+    refs: {
+      subTasks: 'yyyyyyy',
+    },
+  },
+  // ... other nodes
+];
+```
+
+###
 
 ## Tricks
 
