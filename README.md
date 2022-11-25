@@ -3,8 +3,9 @@
 ## How To Use
 
 1. [Create a **SchemaRegistry**](#SchemaRegistry), define types and relations.
-2. Setup a 
-3. 
+2. [Create a **ScatterStorage**](#ScatterStorage) with the SchemaRegistry
+3. Call `storage.create('schemaId')` and get an empty object / array to mutate.
+4. Mutate the returned object / array, and we will automatically do spilitting / reference counting etc.
 
 ## SchemaRegistry
 
@@ -66,8 +67,30 @@ expect($person.getSchemaAtPath('children[0].employer')).toBe($entrepreneur);
 - **Works with TypeScript**: no more duplicated declaration! write schema once, get TypeScript type immediately.
 
 ```ts
-type Person = FromSchemaRegistry<typeof registry, 'person'>
-type Entrepreneur = FromSchemaRegistry<typeof registry, 'entrepreneur'>
+type Person = FromSchemaRegistry<typeof registry, 'person'>;
+type Entrepreneur = FromSchemaRegistry<typeof registry, 'entrepreneur'>;
+```
+
+## ScatterStorage
+
+```ts
+const storage = new ScatterStorage({ schemaRegistry: mySchemaRegistry });
+
+// assuming "task" schema is defined, it is an object
+// we create an empty Task Object
+
+const task = storage.create('task');
+
+// then feel free to read / write it
+
+task.name = 'shopping';
+task.subTasks = [{ name: 'buy flowers' }];
+
+// ScatterStorage will automatically make two task nodes!
+// - use getNodeInfo() to check, if it's a node, it will return node info
+
+const subTask1 = storage.getNodeInfo(task.subTasks[0]);
+expect(subTask1.schema).toBe(mySchemaRegistry.get('task'));
 ```
 
 ## Tricks
@@ -96,14 +119,13 @@ If you need, you can define custom fields for schemas.
 Add this to your file, then all schema declarations will be affected.
 
 ```ts
-declare module "data-scatter" {
-
+declare module 'data-scatter' {
   // define new fields for schemas
 
   export interface SchemaBase {
-    description?: string
-    required?: boolean
-    readonly?: boolean
+    description?: string;
+    required?: boolean;
+    readonly?: boolean;
   }
 
   // you can also hack ObjectSchema, ArraySchema
@@ -111,7 +133,7 @@ declare module "data-scatter" {
   // define new types
 
   export interface PrimitiveTypeLUT {
-    integer: number,  // { type: "integer" } -> javascript number
+    integer: number; // { type: "integer" } -> javascript number
   }
 }
 ```

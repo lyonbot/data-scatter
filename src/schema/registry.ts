@@ -1,4 +1,4 @@
-import { Nullish, Spread } from "../types";
+import { Nil, Spread } from "../types";
 import { CommonSchemaId, commonSchemas } from "./commonSchemas";
 import { createPatchedSchema, isPatchedSchema, PatchedSchema, SchemaPatchingContext } from "./PatchedSchema";
 import { TypeLUT, SchemaLUT, Schema, SchemaLUT2TypeLUT, } from "./types";
@@ -100,7 +100,7 @@ class SchemaRegistry<T extends TypeLUT> {
    * - if input is `anotherRegistry`, all original references will remain unchanged, even if the id is overwritten
    * - if input is a new and raw SchemaLUT, all refs will be resolved
    */
-  extend<U extends TypeLUT>(anotherRegistry: SchemaRegistry<U> | Nullish): SchemaRegistry<Spread<T, U>>
+  extend<U extends TypeLUT>(anotherRegistry: SchemaRegistry<U> | Nil): SchemaRegistry<Spread<T, U>>
   extend<U extends {
     [k: string]: Schema<((keyof U | keyof T) & string)> | ((keyof U | keyof T) & string)
   }>(schemaLUT: U): SchemaRegistry<SchemaLUT2TypeLUT<{

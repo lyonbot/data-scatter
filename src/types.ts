@@ -1,4 +1,4 @@
-export type Nullish = null | undefined;
+export type Nil = null | undefined;
 
 /** 
  * return the type of `Object.assign(T, U)`
@@ -8,8 +8,8 @@ export type Nullish = null | undefined;
  *    == { a: boolean; c: number; b: string }
  */
 export type Spread<T, U> =
-  T extends Nullish ? U :
-  U extends Nullish ? T :
+  T extends Nil ? U :
+  U extends Nil ? T :
   { [k in (keyof T | keyof U)]: k extends keyof U ? U[k] : k extends keyof T ? T[k] : never }
 
 // type SpreadTest = Spread<{ a: 123, c: number }, { a: boolean, b: string }>
