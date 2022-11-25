@@ -1,0 +1,23 @@
+{
+  "name": "playground",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "data-scatter": "workspace:*",
+    "preact": "^10.11.3"
+  },
+  "devDependencies": {
+    "dev-base": "workspace:*",
+    "eslint-config-custom": "workspace:*",
+    "vite": "^3.2.4"
+  }
+}

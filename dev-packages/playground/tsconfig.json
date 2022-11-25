@@ -1,0 +1,12 @@
+{
+  "extends": "dev-base/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ES2020",
+    "rootDir": "src",
+    "jsx": "react"
+  },
+  "include": ["src"],
+  "exclude": ["dist", "build", "node_modules"],
+  "references": [{ "path": "node_modules/data-scatter/tsconfig.json" }]
+}

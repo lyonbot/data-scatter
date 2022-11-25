@@ -1,0 +1,43 @@
+{
+  "name": "data-scatter",
+  "version": "0.0.0",
+  "main": "./cjs/index.js",
+  "module": "./esm/index.js",
+  "types": "./esm/index.d.ts",
+  "license": "MIT",
+  "files": [
+    "esm",
+    "lib"
+  ],
+  "scripts": {
+    "prepack": "npm run build",
+    "clean": "tsc -b --clean && rimraf cjs esm",
+    "build": "run-s build:esm build:cjs",
+    "build:esm": "tsc -b",
+    "build:cjs": "build-cjs esm/index.js cjs/index.js",
+    "test": "run-p test:*",
+    "test:jest": "jest",
+    "test:typecheck": "cd test && tsc -b",
+    "dev": "run-p dev:*",
+    "dev:package": "tsc -b -w",
+    "dev:playground": "cd dev-packages/playground && npm run dev",
+    "lint": "eslint *.ts*"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.2.3",
+    "@types/lodash": "^4.14.190",
+    "dev-base": "workspace:*",
+    "esbuild": "^0.15.15",
+    "esbuild-jest": "^0.5.0",
+    "eslint": "^7.32.0",
+    "eslint-config-custom": "workspace:*",
+    "jest": "^29.3.1",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.5.2"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "tiny-typed-emitter": "^2.1.0"
+  }
+}

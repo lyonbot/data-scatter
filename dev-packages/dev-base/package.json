@@ -1,0 +1,17 @@
+{
+  "name": "dev-base",
+  "version": "0.0.0",
+  "main": "index.js",
+  "bin": {
+    "build-cjs": "./cli/build-cjs.js"
+  },
+  "private": true,
+  "license": "MIT",
+  "dependencies": {
+    "esbuild": "^0.15.15",
+    "fs-extra": "^10.1.0"
+  },
+  "devDependencies": {
+    "eslint-config-custom": "workspace:*"
+  }
+}

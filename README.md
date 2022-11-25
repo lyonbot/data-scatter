@@ -1,0 +1,117 @@
+# data-scatter
+
+## How To Use
+
+1. [Create a **SchemaRegistry**](#SchemaRegistry), define types and relations.
+2. Setup a 
+3. 
+
+## SchemaRegistry
+
+Use `createSchemaRegistry` to make schemas cross-referencing!
+
+- **Define Schemas, with Cross-Referencing**: easy way to define flexible schemas
+
+```js
+const registry = createSchemaRegistry({
+  // ----------------------------------------------------------------
+  // define a schema in JSON-Schema like format
+  person: {
+    type: 'object',
+    properties: {
+      // you can define type in JSON Schema
+      name: { type: 'string' },
+
+      // or just refer to a defined type
+      father: 'person',
+      mother: 'person',
+      employer: 'entrepreneur',
+
+      // you can also do it in a nested type
+      // ( see `items` )
+      children: { type: 'array', items: 'person' },
+    },
+  },
+
+  // ----------------------------------------------------------------
+  // extend an existing object schema
+  entrepreneur: {
+    type: 'object',
+    title: 'A person with ambitions!', // <- extra notes
+    extends: ['person'], // <- inherit properties from `person`
+    properties: {
+      permissions: { type: 'array', items: { type: 'string' } }, // add string[]
+    },
+  },
+});
+```
+
+- **Access Schema Registry**: now, you can easily get schema of any properties, in any depth!
+
+```js
+const $entrepreneur = registry.get('entrepreneur');
+const $person = registry.get('person');
+
+assert($entrepreneur.isObject());
+expect($entrepreneur.title).toBe('A person with ambitions!'); // <- extra notes
+
+expect($person.getSchemaAtPath('children[0].father')).toBe($person);
+expect($person.getSchemaAtPath('children[0].employer')).toBe($entrepreneur);
+```
+
+- **Immutable**: you can't modify a registry, but you can create a new one based on it.
+
+- **Combining Registries**: call `reg1.extend(reg2)` and you will get the larger registry. All existing schemas will not be affected.
+
+- **Works with TypeScript**: no more duplicated declaration! write schema once, get TypeScript type immediately.
+
+```ts
+type Person = FromSchemaRegistry<typeof registry, 'person'>
+type Entrepreneur = FromSchemaRegistry<typeof registry, 'entrepreneur'>
+```
+
+## Tricks
+
+### Extend an existing Schema
+
+If you already have a `schemaRegistry`, and there is a `user` schema inside, and you **want to add a property**,
+then you can do it like this:
+
+```ts
+const newSchemaRegistry = schemaRegistry.extend({
+  user: {
+    type: 'object',
+    extends: [schemaRegistry.get('user')], // <- extends from old `user` schema, from old registry
+    properties: {
+      newProp: { ... },
+    },
+  },
+})
+```
+
+### Check Schema Definitions in TypeScript
+
+If you need, you can define custom fields for schemas.
+
+Add this to your file, then all schema declarations will be affected.
+
+```ts
+declare module "data-scatter" {
+
+  // define new fields for schemas
+
+  export interface SchemaBase {
+    description?: string
+    required?: boolean
+    readonly?: boolean
+  }
+
+  // you can also hack ObjectSchema, ArraySchema
+
+  // define new types
+
+  export interface PrimitiveTypeLUT {
+    integer: number,  // { type: "integer" } -> javascript number
+  }
+}
+```
