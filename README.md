@@ -3,9 +3,9 @@
 ## How To Use
 
 1. [Create a **SchemaRegistry**](#SchemaRegistry), define types and relations.
-2. [Create a **ScatterStorage**](#ScatterStorage) with the SchemaRegistry
+2. [Create a **ScatterStorage**](#ScatterStorage) with the SchemaRegistry.
 3. Call `storage.create('schemaId')` and get an empty object / array to mutate.
-4. Mutate the returned object / array, and we will automatically do spilitting / reference counting etc.
+4. Manipulate the object / array as you like. ScatterStorage will create sub-nodes automatically when needed.
 
 ## SchemaRegistry
 
@@ -38,10 +38,10 @@ const registry = createSchemaRegistry({
   // extend an existing object schema
   entrepreneur: {
     type: 'object',
-    title: 'A person with ambitions!', // <- extra notes
+    title: 'A person with goals!', // <- extra notes
     extends: ['person'], // <- inherit properties from `person`
     properties: {
-      permissions: { type: 'array', items: { type: 'string' } }, // add string[]
+      goals: { type: 'array', items: { type: 'string' } }, // add string[]
       employer: null, // delete from inherited properties
     },
   },
@@ -55,7 +55,7 @@ const $entrepreneur = registry.get('entrepreneur');
 const $person = registry.get('person');
 
 assert($entrepreneur.isObject());
-expect($entrepreneur.title).toBe('A person with ambitions!'); // <- read extra notes
+expect($entrepreneur.title).toBe('A person with goals!'); // <- read extra notes
 
 // query via data path - from a schema
 expect($person.getSchemaAtPath('children[0].father')).toBe($person);
@@ -101,32 +101,38 @@ expect(subTask1.schema).toBe(mySchemaRegistry.get('task'));
 
 ### Generate ID for Nodes
 
-When load / dump nodes, we use nodeId to replace current existing nodes
-
 By default nodes has random ID like `task#efe903` (schemaId + random number)
 
-You can also implement `function nodeIdGenerator(storage, schema): string` and give to **ScatterStorage**.
+You can also implement `function nodeIdGenerator(storage, schema?): string` and give to **ScatterStorage**.
+
+Note:
+
+- This id can be ugly because it is invisible to users and only used in ScatterStorage.
+- When load / dump nodes, we use nodeId to replace current existing nodes
 
 ### Load and Dump Nodes
 
 **ScatterStorage** provides these methods for you. While loading / dumping, all the referencing relations are retained.
 
-- `load()`
+- `loadIntoStorage({ storage, nodes, loader? })`
 
   Load nodes into this storage.
 
   If met same **nodeId** in current storage:
 
-  - Same Schema? Discard current node's content and use loaded data.
-  - Different? an **Error** will be thrown.
+  - Same Schema? Clear current node's content and use loaded data.
+  - Different? Make a new id for the old node.
+
+  The `loader(requestedId)` is called when met missing references:
+  
+  - You can return `null`, data in dumped format, or node from `storage.get(...)`
+  - if `loader` is async function, the `loadIntoStorage` will become async too (don't forget *await*)
+
+  After loaded, a report is returned.
 
 - `dump()`
 
   Save nodes
-
-- `clear()`
-
-  delete all nodes of this storage. all the existing proxies of nodes, will lost data.
 
 The dumped format is:
 

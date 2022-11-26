@@ -30,10 +30,10 @@ describe('SchemaRegistry', () => {
       // besides, you can extend another schema
       entrepreneur: {
         type: 'object',
-        title: 'A person with ambitions!',
+        title: 'A person with goals!',
         extends: ['person'],
         properties: {
-          permissions: { type: 'array', items: { type: 'string' } },
+          goals: { type: 'array', items: { type: 'string' } },
           employer: null,  // delete from inherited properties
         }
       },
@@ -44,14 +44,14 @@ describe('SchemaRegistry', () => {
 
     const $entrepreneur = registry.get('entrepreneur')
     assert($entrepreneur.isObject())
-    assert('permissions' in $entrepreneur.properties)
+    assert('goals' in $entrepreneur.properties)
     assert('name' in $entrepreneur.properties)   // inherited from "user"
     assert(false === ('employer' in $entrepreneur.properties))   // deleted from inheriting
-    expect($entrepreneur.title).toBe('A person with ambitions!')
+    expect($entrepreneur.title).toBe('A person with goals!')
 
     const $person = registry.get('person')
     assert($person.isObject())
-    assert(false === ('permissions' in $person.properties))  // special properties of "admin"
+    assert(false === ('goals' in $person.properties))  // special properties of "admin"
     assert('name' in $person.properties)
 
     const $alsoPerson = registry.get('person/properties/father');

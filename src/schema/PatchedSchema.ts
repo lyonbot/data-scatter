@@ -109,23 +109,23 @@ export function createPatchedSchema<T>(
     // object: properties = { ... extends } + schema.properties?
 
     if (ans.isObject()) {
-      const mergePropertyMap = (key: 'properties' | 'patternProperties') => {
+      const mergePropertyMap = (schemaField: 'properties' | 'patternProperties') => {
         const writeTo = {} as any
 
         if (ans.extends) {
           for (const e of ans.extends) {
-            if (e.isObject()) Object.assign(writeTo, e[key])
+            if (e.isObject()) Object.assign(writeTo, e[schemaField])
           }
         }
 
-        const raw = schema.type === 'object' && schema[key]
+        const raw = schema.type === 'object' && schema[schemaField]
         if (raw) {
           Object.keys(raw).forEach(key => {
             const query = raw[key];
             if (isNil(query)) {
               if (key in writeTo) delete writeTo[key];
             } else {
-              writeTo[key] = initCtx.getPatchedSchema(query, `${schemaId}/properties/${key}`)
+              writeTo[key] = initCtx.getPatchedSchema(query, `${schemaId}/${schemaField}/${key}`)
             }
           })
         }

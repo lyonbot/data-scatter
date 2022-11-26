@@ -23,7 +23,14 @@ const proxyHandler: ProxyHandler<any> = {
     const propSchema = self?.schema?.getDirectChildSchema(key)
     if (!self || !propSchema || (propSchema.type !== 'object' && propSchema.type !== 'array')) {
       // the property is not defined as object/array
-      // no need to do special process
+
+      // setting array.length, something will be discarded!
+      if (self?.isArray && key === 'length' && self.refs) {
+        Object.keys(self.refs).forEach(k => {
+          if (+k >= value) self._setRef(k, null);
+        })
+      }
+
       return Reflect.set(target, key, value)
     }
 
@@ -71,7 +78,6 @@ export class ScatterNodeInfo<T extends object = any> {
   bus: ScatterStorage<any> | null
 
   referredCount = 0
-  id: string
   schema: PatchedSchema<T> | Nil
   container: T
   proxy: T
@@ -94,7 +100,32 @@ export class ScatterNodeInfo<T extends object = any> {
 
     this.id = bus?.allocateId(this) || ''
 
-    bus?.emit('nodeCreated', bus, this)
+    if (bus) {
+      bus.nodesHaveNoReferrer.add(this)
+      bus.emit('nodeCreated', bus, this)
+    }
+  }
+
+  private _id!: string
+  get id() {
+    return this._id
+  }
+  set id(id: string) {
+    const lastId = this._id
+    if (lastId === id) return
+
+    const bus = this.bus
+    if (bus) {
+      if (id) {
+        if (bus.nodes.has(id)) throw new Error(`Node id already exists: ${id}`)
+        bus.nodes.set(id, this)
+      }
+      if (lastId && bus.nodes.get(lastId) === this) {
+        bus.nodes.delete(lastId)
+      }
+    }
+
+    this._id = id
   }
 
   /** add / replace / delete a ref to other node */
@@ -112,8 +143,16 @@ export class ScatterNodeInfo<T extends object = any> {
       // making first ref? make a container as this.refs
       if (!lastRef && !this.refsCount++) this.refs = makeEmptyLike(this.container)
       this.refs![k] = to
-      to.referredCount++;
+      to._addReferredCount()
     }
+  }
+
+  _addReferredCount() {
+    if (!this.referredCount) {
+      this.bus?.nodesHaveNoReferrer.delete(this)
+    }
+
+    this.referredCount++;
   }
 
   /** when other is unreferring this node, they shall call this */
@@ -123,23 +162,33 @@ export class ScatterNodeInfo<T extends object = any> {
     if (--this.referredCount) return
 
     // this node is no more referenced. tell bus and bus will clean up later.
-    this.bus?.emit('nodeLostLastReferrer', this.bus, this)
+    const bus = this.bus
+    if (bus) {
+      bus.nodesHaveNoReferrer.add(this)
+      bus.emit('nodeLostLastReferrer', bus, this)
+    }
   }
 
-  /** reset this node's content and refs */
-  reset() {
+  /** clear this node's content and refs. will not affect id */
+  clear() {
     if (this.refs) {
       Object.values(this.refs).forEach((r) => (r as ScatterNodeInfo)._minusReferredCount())
       this.refs = void 0
       this.refsCount = 0
     }
 
-    this.container = makeEmptyLike(this.container)
+    if (this.isArray) (this.container as any[]).length = 0
+    else Object.keys(this.container).forEach(key => { delete (this.container as any)[key] })
   }
 
-  /** discard data and detach from storage */
+  /** discard all data and detach from storage */
   dispose() {
-    this.reset()
+    if (this.referredCount) throw new Error('Node is referred, cannot be disposed')
+
+    this.clear()
+
+    this.id = ''
+    this.bus?.nodesHaveNoReferrer.delete(this)
     this.bus = null
     this.schema = null
   }

@@ -42,10 +42,10 @@ const registry = createSchemaRegistry({
   // extend an existing object schema
   entrepreneur: {
     type: 'object',
-    title: 'A person with ambitions!', // <- extra notes
+    title: 'A person with goals!', // <- extra notes
     extends: ['person'], // <- inherit properties from `person`
     properties: {
-      permissions: { type: 'array', items: { type: 'string' } }, // add string[]
+      goals: { type: 'array', items: { type: 'string' } }, // add string[]
     },
   },
 

@@ -1,5 +1,6 @@
 import { createSchemaRegistry, FromSchemaRegistry } from '../src/schema'
-import { ScatterNodeInfo, ScatterStorage } from '../src/scatter'
+import { loadIntoStorage, ScatterNodeInfo, ScatterStorage } from '../src/scatter'
+import { omit } from 'lodash'
 
 describe('ScatterStorage', () => {
   const getSchemaRegistry = () => createSchemaRegistry({
@@ -7,9 +8,16 @@ describe('ScatterStorage', () => {
       type: 'object',
       properties: {
         name: { type: 'string' },
+        executor: { type: 'string' },
         subTasks: { type: 'array', items: 'task' }
       }
     },
+    note: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' }
+      }
+    }
   })
   type Task = FromSchemaRegistry<ReturnType<typeof getSchemaRegistry>, 'task'>
 
@@ -74,8 +82,142 @@ describe('ScatterStorage', () => {
 
     $nodeLostLastReferrer.mockClear()
 
-    task.subTasks!.splice(0) // remove all
+    task.subTasks!.length = 0// remove all
     expect($subTaskArray.refsCount).toBe(0)
     expect($nodeLostLastReferrer).toBeCalledTimes(2) // task and subTask[gas] lost last referrer
+  })
+
+  test('loadIntoStorage', () => {
+    const storage = new ScatterStorage({
+      schemaRegistry: getSchemaRegistry(),
+    });
+
+    const task1 = storage.create('task')
+    const $task1 = storage.getNodeInfo(task1)!
+
+    $task1.id = 'task1'
+    task1.name = 'buy flowers'
+
+    const res = loadIntoStorage({
+      storage,
+      nodes: [{
+        nodeId: 'task1',
+        schemaId: 'task',
+        value: { executor: 'lyonbot' },
+        refs: { subTasks: 'array1' }
+      }, {
+        nodeId: 'array1',
+        schemaId: 'task/properties/subTasks',
+        refs: { '0': 'task1' },
+        value: [null]
+      }]
+    })
+
+    expect(res.loaded).toHaveLength(2)
+    expect(res.loaded).toContain(storage.getNodeInfo(task1))
+    expect(res.renamed).toEqual([])
+
+    expect(omit(task1, 'subTasks')).toEqual({
+      // name: ... is discarded
+      executor: 'lyonbot',
+      // subTasks is a self-looped array. check it later.
+    })
+    expect(task1.subTasks![0]).toBe(task1)
+  })
+
+  test('loadIntoStorage: async loader + rename id-same schema-different old node', async () => {
+    const storage = new ScatterStorage({
+      schemaRegistry: getSchemaRegistry(),
+    });
+
+    const note1 = storage.create('note')
+    const $note1 = storage.getNodeInfo(note1)!
+
+    $note1.id = 'task1'   // <-- id is "task1", but schema is "note"
+    note1.message = 'buy flowers'
+
+    // await!
+    const res = await loadIntoStorage({
+      storage,
+      nodes: [{
+        nodeId: 'task1',
+        schemaId: 'task',
+        value: { executor: 'lyonbot' },
+        refs: { subTasks: 'array1' }
+      }],
+      async loader(id) {
+        if (id === 'array1') {
+          return {
+            nodeId: 'array1',
+            schemaId: 'task/properties/subTasks',
+            refs: { '0': 'task1' },
+            value: [null]
+          }
+        }
+      },
+    })
+
+    const task1 = storage.get('task1')
+
+    expect(task1).not.toBe(note1)
+    expect(note1).toEqual({ message: 'buy flowers' }) // not affected!
+    expect($note1.id).not.toBe('task1') // old node's id is changed
+
+    expect(omit(task1, 'subTasks')).toEqual({
+      executor: 'lyonbot',
+      // subTasks is a self-looped array. check it later.
+    })
+    expect(task1.subTasks![0]).toBe(task1)
+
+    expect(res.loaded).toHaveLength(2)
+    expect(res.loaded).toContain(storage.getNodeInfo(task1))
+    expect(res.renamed).toEqual([{ oldId: 'task1', nodeInfo: $note1 }])
+  })
+
+  test('loadIntoStorage: throw from loader', async () => {
+    const storage = new ScatterStorage({
+      schemaRegistry: getSchemaRegistry(),
+    });
+
+    await expect(() => loadIntoStorage({
+      storage,
+      nodes: [{
+        nodeId: 'task1',
+        schemaId: 'task',
+        value: { executor: 'lyonbot' },
+        refs: { subTasks: 'array1' }
+      }],
+      async loader(id) {
+        if (id === 'array1') throw new Error('custom async error')
+        return null
+      },
+    })).rejects.toThrowError('custom async error')
+
+    expect(() => loadIntoStorage({
+      storage,
+      nodes: [{
+        nodeId: 'task1',
+        schemaId: 'task',
+        value: { executor: 'lyonbot' },
+        refs: { subTasks: 'array1' }
+      }],
+      loader(id) {
+        if (id === 'array1') throw new Error('custom sync error')
+        return null
+      },
+    })).toThrowError('custom sync error')
+
+    expect(() => loadIntoStorage({
+      storage,
+      nodes: [{
+        nodeId: 'task1',
+        schemaId: 'task',
+        value: { executor: 'lyonbot' },
+        refs: { subTasks: 'array1' }
+      }],
+      loader() {
+        return null
+      },
+    })).toThrowError('Failed to fetch missing node: array1');
   })
 })
