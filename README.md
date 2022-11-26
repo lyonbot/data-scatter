@@ -6,6 +6,7 @@
 2. [Create a **ScatterStorage**](#ScatterStorage) with the SchemaRegistry.
 3. Call `storage.create('schemaId')` and get an empty object / array to mutate.
 4. Manipulate the object / array as you like. ScatterStorage will create sub-nodes automatically when needed.
+5. [Load and Dump Nodes](#Load-and-Dump-Nodes), (de)serialize all nodes and references
 
 ## SchemaRegistry
 
@@ -77,6 +78,8 @@ type Person = FromSchemaRegistry<typeof registry, 'person'>;
 type Entrepreneur = FromSchemaRegistry<typeof registry, 'entrepreneur'>;
 ```
 
+<br/>
+
 ## ScatterStorage
 
 ```ts
@@ -110,51 +113,54 @@ Note:
 - This id can be ugly because it is invisible to users and only used in ScatterStorage.
 - When load / dump nodes, we use nodeId to replace current existing nodes
 
-### Load and Dump Nodes
+<br/>
 
-**ScatterStorage** provides these methods for you. While loading / dumping, all the referencing relations are retained.
+## Load and Dump Nodes
 
-- `loadIntoStorage({ storage, nodes, loader? })`
+This library provides two methods for you. While loading / dumping, all the referencing relations are retained.
 
-  Load nodes into this storage.
+### `loadIntoStorage({ storage, nodes, loader? })`
 
-  - `nodes`: array in the dumped format
+Load nodes into this storage.
 
-  - `loader`: (optional) - called when met broken references
+- `nodes`: array in the dumped format
 
-    - accepts one parameter: `nodeId: string`
-    - returns `null`, data in dumped format, or existing object from `storage.get(...)`
-    - can be an async function, but the `loadIntoStorage` will become async too (don't forget _await_)
+- `loader`: (optional) - called when met broken references
 
-  If met same **nodeId** in current storage:
+  - accepts one parameter: `nodeId: string`
+  - returns `null`, data in dumped format, or existing object from `storage.get(...)`
+  - can be an async function, but the `loadIntoStorage` will become async too (don't forget _await_)
 
-  - Same Schema? Clear current node's content and use loaded data.
-  - Different? Make a new id for the old node.
+If met same **nodeId** in current storage:
 
-  Returns `{ loaded, updated, renamed }` when loaded.
+- Same Schema? Clear current node's content and use loaded data.
+- Different? Make a new id for the old node.
 
-  - `loaded`: NodeInfo list, including new and updated nodes.
+Returns `{ loaded, updated, renamed }` when loaded.
 
-  - `updated`: NodeInfo list
+- `loaded`: NodeInfo list, including new and updated nodes.
 
-  - `renamed`: Array of `{ nodeInfo, oldId }`
+- `updated`: NodeInfo list
+
+- `renamed`: Array of `{ nodeInfo, oldId }`
 
 
-- `dumpNodesFromStorage({ storage, nodes, skips? })`
+### `dumpNodesFromStorage({ storage, nodes, skips? })`
 
-  Export nodes from storage into dumped format
+Export nodes from storage into dumped format
 
-  - `nodes`: array of nodeId, actual object or NodeInfo
+- `nodes`: array of nodeId, actual object or NodeInfo
 
-  - `skips`: (optional) - nodeId list, or `(id, nodeInfo) => boolean`
+- `skips`: (optional) - nodeId list, or `(id, nodeInfo) => boolean`
 
-  Returns `{ output, skippedNodes }`
+Returns `{ output, skippedNodes }`
 
-  - `output`: array in the dumped format
+- `output`: array in the dumped format
 
-  - `skippedNodes`: NodeInfo list, these nodes are not dumped
+- `skippedNodes`: NodeInfo list, these nodes are not dumped
 
-The dumped format is:
+
+### Dumped Format
 
 ```js
 [
@@ -173,7 +179,8 @@ The dumped format is:
 ];
 ```
 
-###
+<br/>
+
 
 ## Tricks
 
