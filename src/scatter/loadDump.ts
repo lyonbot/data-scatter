@@ -1,5 +1,5 @@
 import { forEach, memoize } from "lodash";
-import { makeEmptyLike } from "./utils";
+import { getValueType, makeEmptyLike, NodeSelector, normalizeNodeSelector } from "./utils";
 import { ScatterNodeInfo } from "./ScatterNodeInfo";
 import { Nil } from "../types";
 import type { ScatterStorage } from "./storage";
@@ -27,6 +27,7 @@ export interface LoadIntoStorageOptions<LoaderMethodReturns = MaybePromise<Dumpe
 
 export interface LoadIntoStorageResponse {
   loaded: ScatterNodeInfo[]
+  updated: ScatterNodeInfo[]
   renamed: { nodeInfo: ScatterNodeInfo, oldId: string }[]
 }
 
@@ -51,7 +52,8 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
   const loadedNodes = {} as Record<string, ScatterNodeInfo>
   const afterAllRes: LoadIntoStorageResponse = {
     loaded: [],
-    renamed: []
+    updated: [],
+    renamed: [],
   }
 
   type BindFn = (writeTo: any, key: any) => void;
@@ -66,7 +68,7 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
       finalResult = result instanceof ScatterNodeInfo ? result : loadSingleData(result)
 
       if (finalResult.bus !== storage) throw new Error('Don\'t directly call use node from other storage, create a node in this storage first!')
-      
+
       queue.splice(0).forEach(([writeTo, key]) => { writeTo[key] = finalResult!.proxy })
     }
 
@@ -96,12 +98,13 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
 
     const oldNode = storage.nodes.get(data.nodeId)
     if (oldNode) {
-      if (oldNode.schema === schema) {
-        // same schema. reuse old node
+      if (getValueType(data.value) === getValueType(oldNode.container) && oldNode.schema === schema) {
+        // same schema + same container type. reuse old node
         // TODO: support extended schema ? do isExtendedFrom check ?
         writeTo = oldNode
         oldNode.clear()
         Object.assign(oldNode.proxy, data.value)
+        afterAllRes.updated.push(oldNode)
       } else {
         // conflict! rename old existing node
         oldNode.id = storage.allocateId(oldNode)
@@ -143,13 +146,15 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
 /** 
  * dump one nodeInfo to a serializable format
  */
-export function dumpNodeInfo(nodeInfo: ScatterNodeInfo) {
+export function dumpOneNode(nodeInfo: ScatterNodeInfo) {
   const out: DumpedNodeInfo = {
     nodeId: nodeInfo.id,
     schemaId: nodeInfo.schema?.$schemaId || '',
     value: makeEmptyLike(nodeInfo.container),
     refs: {}
   }
+
+  if (Array.isArray(nodeInfo.container)) out.value.length = nodeInfo.container.length
 
   Object.keys(nodeInfo.container).forEach(k => {
     const r = nodeInfo.refs?.[k]
@@ -158,4 +163,42 @@ export function dumpNodeInfo(nodeInfo: ScatterNodeInfo) {
   })
 
   return out
+}
+
+/** 
+ * dump some nodes (including referred nodes) to a serializable format
+ */
+export function dumpNodesFromStorage(opts: {
+  storage: ScatterStorage,
+  ids: Iterable<string>,
+
+  /** do not export these nodes. can be a id list, or a filter function `(id, nodeInfo) => boolean` */
+  skips?: NodeSelector
+}) {
+  const { storage } = opts
+  const skips = normalizeNodeSelector(opts.skips)
+
+  const visitedIds = new Set()
+  const output: DumpedNodeInfo[] = []
+  const skippedNodes: ScatterNodeInfo[] = []
+
+  const idQueue = Array.from(opts.ids)
+
+  for (let id: string; idQueue && (id = idQueue.shift()!);) {
+    if (visitedIds.has(id)) continue
+    visitedIds.add(id)
+
+    const nodeInfo = storage.nodes.get(id)
+    if (!nodeInfo) continue
+    if (skips(nodeInfo)) {
+      skippedNodes.push(nodeInfo)
+      continue
+    }
+
+    const dumped = dumpOneNode(nodeInfo);
+    output.push(dumped)
+    idQueue.push(...Object.values(dumped.refs))
+  }
+
+  return { output, skippedNodes }
 }

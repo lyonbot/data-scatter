@@ -148,6 +148,7 @@ export type FromSchemaRegistry<T extends SchemaRegistry<any>, K extends keyof T[
 
 
 function querySchema(schemaLUT: Record<string, PatchedSchema<any>>, query: string): PatchedSchema<any> | Nil {
+  if (!query) return null;
   const ans = schemaLUT[query] as PatchedSchema<any> | Nil
   if (!ans && query.includes('/')) {
     const parts = query.split('/')

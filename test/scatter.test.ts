@@ -1,5 +1,5 @@
 import { createSchemaRegistry, FromSchemaRegistry } from '../src/schema'
-import { loadIntoStorage, ScatterNodeInfo, ScatterStorage } from '../src/scatter'
+import { dumpNodesFromStorage, loadIntoStorage, ScatterNodeInfo, ScatterStorage } from '../src/scatter'
 import { omit } from 'lodash'
 
 describe('ScatterStorage', () => {
@@ -92,6 +92,136 @@ describe('ScatterStorage', () => {
     task.subTasks!.length = 0// remove all
     expect($subTaskArray.refsCount).toBe(0)
     expect($nodeLostLastReferrer).toBeCalledTimes(2) // task and subTask[gas] lost last referrer
+
+    // ------------------------------
+
+    $nodeCreated.mockClear();
+
+    (task as any).meta = { foo: [task] };
+    expect($nodeCreated).toBeCalledTimes(2)  // meta object & meta.foo array
+    expect(nodes[nodes.length - 2].proxy).toEqual({ foo: [task] })
+    expect(nodes[nodes.length - 1].proxy).toEqual([task])
+  })
+
+  test('dump and load to another storage', () => {
+    const storage = new ScatterStorage({ schemaRegistry: getSchemaRegistry() });
+    const storage2 = new ScatterStorage({ schemaRegistry: getSchemaRegistry() })
+
+    const task = storage.create('task')
+    const $task = storage.getNodeInfo(task)!
+
+    Object.assign(task, {
+      name: 'shopping',
+      meta: {
+        foo: [task]   // circular!
+      },
+      subTasks: [
+        { name: 'flowers' }
+      ]
+    })
+
+    // ------------------------------
+
+    const dumped = dumpNodesFromStorage({ storage, ids: [$task.id] })
+    expect(dumped.output.length).toEqual(5)
+
+    const loadRes = loadIntoStorage({ storage: storage2, nodes: dumped.output })
+    {
+      expect(loadRes.loaded).toHaveLength(5)
+      expect(loadRes.updated).toHaveLength(0)
+      expect(loadRes.renamed).toHaveLength(0)
+
+      const imported = storage2.get($task.id)
+      expect(imported).toEqual({
+        name: 'shopping',
+        meta: {
+          foo: [imported]   // circular!
+        },
+        subTasks: [
+          { name: 'flowers' }
+        ]
+      })
+    }
+
+    const loadAgainRes = loadIntoStorage({ storage: storage2, nodes: dumped.output })
+    {
+      expect(loadAgainRes.loaded).toHaveLength(5)
+      expect(loadAgainRes.updated).toHaveLength(5) // <-
+      expect(loadAgainRes.renamed).toHaveLength(0)
+
+      const imported = storage2.get($task.id)
+      expect(imported).toEqual({
+        name: 'shopping',
+        meta: {
+          foo: [imported]   // circular!
+        },
+        subTasks: [
+          { name: 'flowers' }
+        ]
+      })
+    }
+  })
+
+  test('disposeOrphanNodes', () => {
+    const storage = new ScatterStorage({ schemaRegistry: getSchemaRegistry() });
+
+    const task = storage.create('task')
+    const $task = storage.getNodeInfo(task)!
+
+    Object.assign(task, {
+      name: 'shopping',
+      meta: {
+        foo: [task]   // circular!
+      },
+      subTasks: [
+        { name: 'flowers' }
+      ]
+    })
+
+    // -----------------------------
+    // test dispose nodes
+
+    // cannot nuclear all nodes: there is a loop in dependency graph!
+    // task === task.meta.foo[0]
+
+    expect(storage.orphanNodes.size).toBe(0)
+
+    storage.disposeOrphanNodes()
+    expect(storage.nodes.size).not.toBe(0)
+    expect(storage.orphanNodes.size).toBe(0) // task === task.meta.foo[0]
+
+    // cannot manually dispose those node
+
+    const $subTask = storage.getNodeInfo(task.subTasks![0])!
+    expect(() => { $subTask.dispose() }).toThrowError('Node is referred, cannot be disposed')
+    expect(() => { $task.dispose() }).toThrowError('Node is referred, cannot be disposed')
+
+    // unlink task.meta
+
+    const $orphanMeta = storage.getNodeInfo((task as any).meta)!
+    delete (task as any).meta
+    expect(storage.orphanNodes.size).toBe(1) // the deleted "task.meta" object
+    expect(storage.orphanNodes).toContain($orphanMeta)
+    expect(() => { $task.dispose() }).toThrowError('Node is referred, cannot be disposed')
+
+    // kill task.meta, auto unlink task.meta.foo
+
+    const $orphanMetaFoo = storage.getNodeInfo($orphanMeta.proxy.foo)!
+    $orphanMeta.dispose()
+    expect(storage.orphanNodes.size).toBe(1) // "task.meta" is gone, kills the only ref to "task.meta.foo"
+    expect(storage.orphanNodes).toContain($orphanMetaFoo)
+
+    // kill task.meta.foo, auto unlink task
+
+    $orphanMetaFoo.dispose()
+    expect(storage.orphanNodes.size).toBe(1) // "task.meta.foo" is gone, kills the only ref to "task"
+    expect(storage.orphanNodes).toContain($task)
+
+    // nuclear all nodes: task is an orphan, and there is no loop in dependency graph!
+
+    storage.disposeOrphanNodes()
+    expect(storage.orphanNodes.size).toBe(0)
+    expect(storage.nodes.size).toBe(0)
   })
 
   test.each([true, false])('disallowSubTypeAssign: %p', (disallowSubTypeAssign) => {
@@ -142,25 +272,33 @@ describe('ScatterStorage', () => {
         nodeId: 'task1',
         schemaId: 'task',
         value: { executor: 'lyonbot' },
-        refs: { subTasks: 'array1' }
+        refs: { subTasks: 'array1', meta: 'anonymousObject1' }
       }, {
         nodeId: 'array1',
         schemaId: 'task/properties/subTasks',
         refs: { '0': 'task1' },
         value: [null]
+      }, {
+        nodeId: 'anonymousObject1',
+        schemaId: '',
+        value: { hello: 'world' },
+        refs: { task: 'task1' }
       }]
     })
 
-    expect(res.loaded).toHaveLength(2)
+    expect(res.loaded).toHaveLength(3)
     expect(res.loaded).toContain(storage.getNodeInfo(task1))
     expect(res.renamed).toEqual([])
 
-    expect(omit(task1, 'subTasks')).toEqual({
+    expect(task1).toEqual({
       // name: ... is discarded
       executor: 'lyonbot',
-      // subTasks is a self-looped array. check it later.
+      meta: {
+        hello: 'world',
+        task: task1 // anonymous object is referencing task1
+      },
+      subTasks: [task1] // subTasks is a self-looped array
     })
-    expect(task1.subTasks![0]).toBe(task1)
   })
 
   test('loadIntoStorage: async loader + rename id-same schema-different old node', async () => {
@@ -201,11 +339,10 @@ describe('ScatterStorage', () => {
     expect(note1).toEqual({ message: 'buy flowers' }) // not affected!
     expect($note1.id).not.toBe('task1') // old node's id is changed
 
-    expect(omit(task1, 'subTasks')).toEqual({
+    expect(task1).toEqual({
       executor: 'lyonbot',
-      // subTasks is a self-looped array. check it later.
+      subTasks: [task1] // subTasks is a self-looped array
     })
-    expect(task1.subTasks![0]).toBe(task1)
 
     expect(res.loaded).toHaveLength(2)
     expect(res.loaded).toContain(storage.getNodeInfo(task1))

@@ -1,6 +1,6 @@
 import isNil from "lodash/isNil";
 import toPath from "lodash/toPath";
-import { Spread } from "../types";
+import { Nil, Spread } from "../types";
 import { CommonSchemaId } from "./commonSchemas";
 import { ArraySchema, ObjectSchema, PrimitiveSchema, SchemaBase, } from "./types"
 
@@ -41,7 +41,7 @@ export interface PatchedSchema<T> extends SchemaBase {
   isObject(): this is PatchedObjectSchema<T>;
   isArray(): this is PatchedArraySchema<T>;
 
-  isExtendedFrom(otherSchema: PatchedSchema<any>): boolean;
+  isExtendedFrom(otherSchema: PatchedSchema<any> | Nil): boolean;
 
   getDirectChildSchema<K extends keyof T>(key: K): PatchedSchema<T[K]> | null
   getDirectChildSchema(key: string | number): PatchedSchema<any> | null
@@ -188,7 +188,7 @@ const patchedSchemaPrototype: Partial<PatchedSchema<any>> & { constructor: any }
 
   isExtendedFrom(other) {
     if (other === this) return true
-    if (!this.extends) return false;
+    if (!this.extends || !other) return false;
     if (!isPatchedSchema(other)) return false;
 
     return this.extends.some(it => it === other || it.isExtendedFrom(other))

@@ -18,29 +18,28 @@ const proxyHandler: ProxyHandler<any> = {
     return rTo ? rTo.proxy : Reflect.get(target, key, recv)
   },
   set(target, key, value) {
-    const self = objToInfoLUT.get(target)
+    const self = objToInfoLUT.get(target)!
 
-    const propSchema = self?.schema?.getDirectChildSchema(key)
-    if (!self || !propSchema || (propSchema.type !== 'object' && propSchema.type !== 'array')) {
-      // the property is not defined as object/array
-
-      // setting array.length, something will be discarded!
-      if (self?.isArray && key === 'length' && self.refs) {
-        Object.keys(self.refs).forEach(k => {
-          if (+k >= value) self._setRef(k, null);
-        })
-      }
-
+    // setting array.length, something will be discarded!
+    if (self.isArray && key === 'length') {
+      if (self.refs) Object.keys(self.refs).forEach(k => {
+        if (+k >= value) self._setRef(k, null);
+      })
       return Reflect.set(target, key, value)
     }
 
-    // this property is type defined
+    const propSchema = self?.schema?.getDirectChildSchema(key)
+
     // if the `value` is
     //
     // 1. a proxy
-    //    - if is from same ScatterStorage, and have same schema? just use it
+    //    - check if is from same ScatterStorage, and 
+    //       - have same schema? just use it
+    //       - current property is not defined? just use it too!
     //    - otherwise, fallback to case 2
-    // 2. a object / array: make a node for it, then make a ref
+    // 2. a object / array
+    //    - make a node for it, then make a ref
+    //    - always make node even if `propSchema` is not undefined
     // 3. other: normally set
     //
     // note: in any case, the old ref on this property key, must be removed, if presents.
@@ -51,11 +50,12 @@ const proxyHandler: ProxyHandler<any> = {
     if (
       (valueInfo = objToInfoLUT.get(value)) &&
       valueInfo.bus === self.bus &&
-      (
+      (!propSchema /* current property not defined */ || (
+        /* or the incoming node's schema suits this property */
         !self.bus?.options.disallowSubTypeAssign
           ? valueInfo.schema?.isExtendedFrom(propSchema) // Dog can be stored in Animal field
           : valueInfo.schema === propSchema // treat as different types (default)
-      )
+      ))
     ) {
       // case 1, pass
     } else if (isObject(value)) {
@@ -186,8 +186,8 @@ export class ScatterNodeInfo<T extends object = any> {
   }
 
   /** discard all data and detach from storage */
-  dispose() {
-    if (this.referredCount) throw new Error('Node is referred, cannot be disposed')
+  dispose(dangerouslyForce?: boolean) {
+    if (!dangerouslyForce && this.referredCount) throw new Error('Node is referred, cannot be disposed')
 
     this.clear()
 

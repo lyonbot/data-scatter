@@ -2,6 +2,7 @@ import { TypedEmitter } from "tiny-typed-emitter"
 import { TypeLUT, SchemaRegistry, PatchedSchema } from "../schema"
 import { Nil, KeyOf } from "../types";
 import { ScatterNodeInfo, objToInfoLUT } from "./ScatterNodeInfo";
+import { makeEmptyLike, NodeSelector, normalizeNodeSelector } from "./utils";
 
 export interface AutoScatterEvents<T extends TypeLUT = any> {
   /**
@@ -49,9 +50,9 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
   create<T extends object = any>(schema: PatchedSchema<T>, fillDataWith?: any): T
   create(schema: string | PatchedSchema<any> | Nil, fillDataWith?: any): any {
     if (typeof schema === 'string') schema = this.schemaRegistry.get(schema)
-    if (!schema) throw new Error('schema is required'); //schema = null
 
-    const container = schema?.type === 'array' ? [] : {}
+    // note: if no schema, consider the type of fillDataWith
+    const container = fillDataWith ? makeEmptyLike(fillDataWith) : (schema?.type === 'array' ? [] : {})
     const nodeInfo = new ScatterNodeInfo<any>(this, container, schema)
 
     if (schema && (schema.type !== 'object' && schema.type !== 'array')) throw new Error('Schema type must be object or array')
@@ -59,6 +60,39 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
     if (fillDataWith && typeof fillDataWith === 'object') Object.assign(nodeInfo.proxy, fillDataWith)
 
     return nodeInfo.proxy
+  }
+
+  /**
+   * recursively dispose orphan nodes -- they are not referred.
+   */
+  disposeOrphanNodes(opts: {
+    /** default is 100 */
+    maxIterations?: number
+
+    /** do not dispose these nodes. can be a id list, or a filter function `(id, nodeInfo) => boolean` */
+    skips?: NodeSelector
+  } = {}) {
+    const result = {
+      ids: [] as string[]
+    }
+
+    const skips = normalizeNodeSelector(opts.skips)
+    const skipped = new Set<ScatterNodeInfo>()
+
+    for (let iteration = opts.maxIterations || 100; iteration--;) {
+      let killedCount = 0
+      for (const node of this.orphanNodes) {
+        if (skipped.has(node)) continue
+        if (skips(node)) { skipped.add(node); continue }
+
+        result.ids.push(node.id)
+        killedCount++
+        node.dispose()
+      }
+      if (!killedCount) break;
+    }
+
+    return result
   }
 
   /**

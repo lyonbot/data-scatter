@@ -1,3 +1,6 @@
+import { Nil } from "../types";
+import type { ScatterNodeInfo } from "./ScatterNodeInfo";
+
 export const makeEmptyLike = (x: any) => {
   if (Array.isArray(x))
     return [];
@@ -12,3 +15,12 @@ export const getValueType = (x: any) => {
 }
 
 export const enum ValueType { OTHER, OBJECT, ARRAY }
+
+export type NodeSelector = Iterable<string> | ((id: string, nodeInfo: ScatterNodeInfo) => boolean)
+export const normalizeNodeSelector = (input: NodeSelector | Nil): (nodeInfo: ScatterNodeInfo) => boolean => {
+  if (!input) return () => false
+  if (typeof input === 'function') return n => input(n.id, n)
+
+  const set = new Set(input)
+  return n => set.has(n.id)
+}
