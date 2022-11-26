@@ -42,6 +42,7 @@ const registry = createSchemaRegistry({
     extends: ['person'], // <- inherit properties from `person`
     properties: {
       permissions: { type: 'array', items: { type: 'string' } }, // add string[]
+      employer: null, // delete from inherited properties
     },
   },
 });
@@ -168,19 +169,22 @@ const objectSampleSchema = {
     foo: 'schemaId',
     bar: anotherSchema3,
     baz: registry.get('...'),
+
+    delete_from_inherited: null, // use null to delete a property from `extends`
   },
 
-  // (optional) 
+  // (optional)
   //   inherit from others: properties, patternProperties
   //   priorities are lowest -- can be overridden by this schema self's definitions
-  extends: [anotherSchema1, anotherSchema2], 
+  extends: [anotherSchema1, anotherSchema2],
 
   // (optional)
-  //   If a property name matches the given regular expression, 
+  //   If a property name matches the given regular expression,
   //   then assume that the property matches the corresponding schema.
   patternProperties: {
     '^str_': { type: 'string' },
     '^num_': { type: 'number' },
+    '^task_': anotherSchema6,
   },
 };
 

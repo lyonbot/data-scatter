@@ -27,6 +27,7 @@
   "devDependencies": {
     "@types/jest": "^29.2.3",
     "@types/lodash": "^4.14.190",
+    "@types/node": "14",
     "dev-base": "workspace:*",
     "esbuild": "^0.15.15",
     "esbuild-jest": "^0.5.0",

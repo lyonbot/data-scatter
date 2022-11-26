@@ -1,3 +1,4 @@
+import isNil from "lodash/isNil";
 import toPath from "lodash/toPath";
 import { Spread } from "../types";
 import { CommonSchemaId } from "./commonSchemas";
@@ -24,6 +25,8 @@ export interface PatchedSchemaMeta {
   notReady?: boolean;
   /** get some common schema like "length" of "Array" */
   getCommonSchema(id: CommonSchemaId): PatchedSchema<any>;
+  /** resolve patternProperties */
+  resolvePatternProperty?(key: string): PatchedSchema<any> | null;
 }
 
 export interface PatchedSchema<T> extends SchemaBase {
@@ -48,6 +51,7 @@ export interface PatchedSchema<T> extends SchemaBase {
 export interface PatchedObjectSchema<T> extends Spread<ObjectSchema, PatchedSchema<T>> {
   type: 'object'
   properties: { [k in keyof T]: PatchedSchema<T[k]> }
+  patternProperties?: { [k: string]: PatchedSchema<any> }
 }
 
 export interface PatchedArraySchema<T> extends Spread<ArraySchema, PatchedSchema<T>> {
@@ -105,19 +109,45 @@ export function createPatchedSchema<T>(
     // object: properties = { ... extends } + schema.properties?
 
     if (ans.isObject()) {
-      ans.properties = {} as any
+      const mergePropertyMap = (key: 'properties' | 'patternProperties') => {
+        const writeTo = {} as any
 
-      if (ans.extends) {
-        for (const e of ans.extends) {
-          if (e.isObject()) Object.assign(ans.properties, e.properties)
+        if (ans.extends) {
+          for (const e of ans.extends) {
+            if (e.isObject()) Object.assign(writeTo, e[key])
+          }
         }
+
+        const raw = schema.type === 'object' && schema[key]
+        if (raw) {
+          Object.keys(raw).forEach(key => {
+            const query = raw[key];
+            if (isNil(query)) {
+              if (key in writeTo) delete writeTo[key];
+            } else {
+              writeTo[key] = initCtx.getPatchedSchema(query, `${schemaId}/properties/${key}`)
+            }
+          })
+        }
+
+        return writeTo
       }
 
-      const raw = schema.type === 'object' && schema.properties
-      if (raw) {
-        Object.keys(raw).forEach(key => {
-          (ans.properties as any)[key] = initCtx.getPatchedSchema(raw[key], `${schemaId}/properties/${key}`)
-        })
+      ans.properties = mergePropertyMap('properties')
+      ans.patternProperties = mergePropertyMap('patternProperties')
+
+      const patternProperties = ans.patternProperties!
+      if (Object.keys(patternProperties).length === 0) {
+        delete ans.patternProperties
+      } else {
+        const matches = Object.keys(patternProperties).map(pattern => [new RegExp(pattern), patternProperties![pattern]] as const)
+        meta.resolvePatternProperty = k => {
+          if (typeof k !== 'string') return null;
+          for (const it of matches) {
+            if (it[0].test(k)) return it[1]
+          }
+          return null
+        }
       }
     }
 
@@ -146,9 +176,12 @@ const patchedSchemaPrototype: Partial<PatchedSchema<any>> = {
   isObject() { return this.type === 'object' },
   isArray() { return this.type === 'array' },
 
-  getDirectChildSchema(this: PatchedSchema<any>, key: any) {
+  getDirectChildSchema(this: PatchedSchema<any>, key: any): PatchedSchema<any> | null {
     if (this.isObject()) {
-      return this.properties[key] || null;
+      let ans: PatchedSchema<any> | null = this.properties[key]
+      if (!ans && this.patternProperties) ans = this[patchedMark].resolvePatternProperty!(key)
+
+      return ans || null;
     }
 
     if (this.isArray()) {

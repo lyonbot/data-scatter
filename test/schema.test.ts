@@ -33,7 +33,8 @@ describe('SchemaRegistry', () => {
         title: 'A person with ambitions!',
         extends: ['person'],
         properties: {
-          permissions: { type: 'array', items: { type: 'string' } }
+          permissions: { type: 'array', items: { type: 'string' } },
+          employer: null,  // delete from inherited properties
         }
       },
     })
@@ -45,6 +46,7 @@ describe('SchemaRegistry', () => {
     assert($entrepreneur.isObject())
     assert('permissions' in $entrepreneur.properties)
     assert('name' in $entrepreneur.properties)   // inherited from "user"
+    assert(false === ('employer' in $entrepreneur.properties))   // deleted from inheriting
     expect($entrepreneur.title).toBe('A person with ambitions!')
 
     const $person = registry.get('person')
@@ -128,6 +130,9 @@ describe('SchemaRegistry', () => {
         type: 'object',
         properties: {
           hello: 'mazzAlias',
+        },
+        patternProperties: {
+          '^flag_': 'fox'
         }
       },
       mazzAlias: 'mazz'
@@ -175,6 +180,10 @@ describe('SchemaRegistry', () => {
     expect($mazz.getSchemaAtPath('hello.hello')).toBe($mazz)
     expect($mazz.getSchemaAtPath('hello.x')).toBe(null)
     expect($mazz.getSchemaAtPath('xxx')).toBe(null)
+
+    const $fox = registry.get('fox')
+    expect($mazz.getSchemaAtPath('flag_123')).toBe($fox)
+    expect($mazz.getSchemaAtPath('flag_456')).toBe($fox)
 
     // -------------------------------
     // nested ref

@@ -24,7 +24,8 @@ export interface PrimitiveTypeLUT {
 export interface ObjectSchema<SchemaID = string> extends SchemaBase {
   type: 'object',
   extends?: Array<Schema<SchemaID> | SchemaID>
-  properties?: { [k: string]: Schema<SchemaID> | SchemaID }
+  properties?: { [k: string]: Schema<SchemaID> | SchemaID | null }
+  patternProperties?: { [k: string]: Schema<SchemaID> | SchemaID | null }
 }
 
 export interface ArraySchema<SchemaID = string> extends SchemaBase {
@@ -62,6 +63,7 @@ export type Schema2Type<S, LUT extends SchemaLUT = {}, UNKNOWN_TYPE = unknown> =
   ) :
   S extends PrimitiveSchema ? PrimitiveTypeLUT[S['type']] :
   S extends PatchedSchema<infer R> ? R :
+  S extends null ? never :
   UNKNOWN_TYPE
 
 export type SchemaLUT2TypeLUT<LUT extends SchemaLUT, UNKNOWN_TYPE = unknown> = {
