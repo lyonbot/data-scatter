@@ -118,21 +118,41 @@ Note:
 
   Load nodes into this storage.
 
+  - `nodes`: array in the dumped format
+
+  - `loader`: (optional) - called when met broken references
+
+    - accepts one parameter: `nodeId: string`
+    - returns `null`, data in dumped format, or existing object from `storage.get(...)`
+    - can be an async function, but the `loadIntoStorage` will become async too (don't forget _await_)
+
   If met same **nodeId** in current storage:
 
   - Same Schema? Clear current node's content and use loaded data.
   - Different? Make a new id for the old node.
 
-  The `loader(requestedId)` is called when met missing references:
-  
-  - You can return `null`, data in dumped format, or node from `storage.get(...)`
-  - if `loader` is async function, the `loadIntoStorage` will become async too (don't forget *await*)
+  Returns `{ loaded, updated, renamed }` when loaded.
 
-  After loaded, a report is returned.
+  - `loaded`: NodeInfo list, including new and updated nodes.
 
-- `dump()`
+  - `updated`: NodeInfo list
 
-  Save nodes
+  - `renamed`: Array of `{ nodeInfo, oldId }`
+
+
+- `dumpNodesFromStorage({ storage, nodes, skips? })`
+
+  Export nodes from storage into dumped format
+
+  - `nodes`: array of nodeId, actual object or NodeInfo
+
+  - `skips`: (optional) - nodeId list, or `(id, nodeInfo) => boolean`
+
+  Returns `{ output, skippedNodes }`
+
+  - `output`: array in the dumped format
+
+  - `skippedNodes`: NodeInfo list, these nodes are not dumped
 
 The dumped format is:
 

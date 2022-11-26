@@ -121,7 +121,7 @@ describe('ScatterStorage', () => {
 
     // ------------------------------
 
-    const dumped = dumpNodesFromStorage({ storage, ids: [$task.id] })
+    const dumped = dumpNodesFromStorage({ storage, nodes: [$task.id] })
     expect(dumped.output.length).toEqual(5)
 
     const loadRes = loadIntoStorage({ storage: storage2, nodes: dumped.output })

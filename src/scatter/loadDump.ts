@@ -18,9 +18,9 @@ export interface LoadIntoStorageOptions<LoaderMethodReturns = MaybePromise<Dumpe
   /**
    * if a referred nodeId doesn't exist, this will be called.
    * 
-   * this shall return `DumpedNodeInfo | null | undefined`
-   * 
-   * this can be an async function, meanwhile, `loadIntoStorage` will become async too.
+   * - accepts one parameter: `nodeId: string`
+   * - returns `null`, data in dumped format, or existing object from `storage.get(...)`
+   * - can be an async function, but the `loadIntoStorage` will become async too (don't forget *await*)
    */
   loader?: (id: string) => LoaderMethodReturns
 }
@@ -170,7 +170,9 @@ export function dumpOneNode(nodeInfo: ScatterNodeInfo) {
  */
 export function dumpNodesFromStorage(opts: {
   storage: ScatterStorage,
-  ids: Iterable<string>,
+
+  /** array of nodeId, actual object or NodeInfo */
+  nodes: Iterable<string | ScatterNodeInfo | any>,
 
   /** do not export these nodes. can be a id list, or a filter function `(id, nodeInfo) => boolean` */
   skips?: NodeSelector
@@ -178,18 +180,21 @@ export function dumpNodesFromStorage(opts: {
   const { storage } = opts
   const skips = normalizeNodeSelector(opts.skips)
 
-  const visitedIds = new Set()
+  const visited = new Set<ScatterNodeInfo>()
   const output: DumpedNodeInfo[] = []
   const skippedNodes: ScatterNodeInfo[] = []
 
-  const idQueue = Array.from(opts.ids)
+  const queue = Array.from(opts.nodes, x => {
+    if (typeof x === 'string') return storage.nodes.get(x)
+    return storage.getNodeInfo(x)
+  })
 
-  for (let id: string; idQueue && (id = idQueue.shift()!);) {
-    if (visitedIds.has(id)) continue
-    visitedIds.add(id)
-
-    const nodeInfo = storage.nodes.get(id)
+  for (let nodeInfo: ScatterNodeInfo; queue && (nodeInfo = queue.shift()!);) {
     if (!nodeInfo) continue
+
+    if (visited.has(nodeInfo)) continue
+    visited.add(nodeInfo)
+
     if (skips(nodeInfo)) {
       skippedNodes.push(nodeInfo)
       continue
@@ -197,7 +202,7 @@ export function dumpNodesFromStorage(opts: {
 
     const dumped = dumpOneNode(nodeInfo);
     output.push(dumped)
-    idQueue.push(...Object.values(dumped.refs))
+    if (nodeInfo.refsCount) queue.push(...Object.values(nodeInfo.refs!))
   }
 
   return { output, skippedNodes }
