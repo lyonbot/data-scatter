@@ -17,6 +17,13 @@ describe('ScatterStorage', () => {
       properties: {
         message: { type: 'string' }
       }
+    },
+    taskEx: {
+      type: 'object',
+      extends: ['task'],
+      properties: {
+        difficulty: { type: 'string' }
+      }
     }
   })
   type Task = FromSchemaRegistry<ReturnType<typeof getSchemaRegistry>, 'task'>
@@ -85,6 +92,37 @@ describe('ScatterStorage', () => {
     task.subTasks!.length = 0// remove all
     expect($subTaskArray.refsCount).toBe(0)
     expect($nodeLostLastReferrer).toBeCalledTimes(2) // task and subTask[gas] lost last referrer
+  })
+
+  test.each([true, false])('disallowSubTypeAssign: %p', (disallowSubTypeAssign) => {
+    const storage = new ScatterStorage({
+      schemaRegistry: getSchemaRegistry(),
+      disallowSubTypeAssign: disallowSubTypeAssign,
+    });
+
+    const mainTask = storage.create('task', {
+      name: 'exercise',
+      subTasks: []
+    })
+    const hardTask = storage.create('taskEx', {
+      name: 'abs workout',
+      difficulty: 'very hard',
+      subTasks: [
+        { name: 'warm up' }
+      ]
+    })
+
+    const $nodeCreated = jest.fn()
+    storage.on('nodeCreated', $nodeCreated)
+    mainTask.subTasks!.push(hardTask)
+
+    if (disallowSubTypeAssign) {
+      expect(mainTask.subTasks![0]).not.toBe(hardTask)
+      expect($nodeCreated).toBeCalledTimes(1)  // `subTasks` is directly reused!
+    } else {
+      expect(mainTask.subTasks![0]).toBe(hardTask)
+      expect($nodeCreated).not.toBeCalled()
+    }
   })
 
   test('loadIntoStorage', () => {

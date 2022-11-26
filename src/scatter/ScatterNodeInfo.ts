@@ -51,7 +51,11 @@ const proxyHandler: ProxyHandler<any> = {
     if (
       (valueInfo = objToInfoLUT.get(value)) &&
       valueInfo.bus === self.bus &&
-      valueInfo.schema === propSchema
+      (
+        !self.bus?.options.disallowSubTypeAssign
+          ? valueInfo.schema?.isExtendedFrom(propSchema) // Dog can be stored in Animal field
+          : valueInfo.schema === propSchema // treat as different types (default)
+      )
     ) {
       // case 1, pass
     } else if (isObject(value)) {
@@ -101,7 +105,7 @@ export class ScatterNodeInfo<T extends object = any> {
     this.id = bus?.allocateId(this) || ''
 
     if (bus) {
-      bus.nodesHaveNoReferrer.add(this)
+      bus.orphanNodes.add(this)
       bus.emit('nodeCreated', bus, this)
     }
   }
@@ -149,7 +153,7 @@ export class ScatterNodeInfo<T extends object = any> {
 
   _addReferredCount() {
     if (!this.referredCount) {
-      this.bus?.nodesHaveNoReferrer.delete(this)
+      this.bus?.orphanNodes.delete(this)
     }
 
     this.referredCount++;
@@ -164,7 +168,7 @@ export class ScatterNodeInfo<T extends object = any> {
     // this node is no more referenced. tell bus and bus will clean up later.
     const bus = this.bus
     if (bus) {
-      bus.nodesHaveNoReferrer.add(this)
+      bus.orphanNodes.add(this)
       bus.emit('nodeLostLastReferrer', bus, this)
     }
   }
@@ -188,7 +192,7 @@ export class ScatterNodeInfo<T extends object = any> {
     this.clear()
 
     this.id = ''
-    this.bus?.nodesHaveNoReferrer.delete(this)
+    this.bus?.orphanNodes.delete(this)
     this.bus = null
     this.schema = null
   }

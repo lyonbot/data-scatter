@@ -1,5 +1,7 @@
-import * as React from 'preact';
-import { createSchemaRegistry } from 'data-scatter'
+import * as React from 'react';
+import * as ReactDOM from 'react-dom/client';
+import { ObjectInspector } from 'react-inspector'
+import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage } from 'data-scatter'
 
 declare module "data-scatter" {
 
@@ -9,7 +11,7 @@ declare module "data-scatter" {
     description?: string
     tooltip?: string
   }
-  
+
   // add basic types
   // so you can use them like { type: "integer" }
 
@@ -46,15 +48,40 @@ const registry = createSchemaRegistry({
     extends: ['person'], // <- inherit properties from `person`
     properties: {
       goals: { type: 'array', items: { type: 'string' } }, // add string[]
+      employer: null, // not inherit this property
     },
   },
 
-  test: { type: "integer" }
+  task: {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      executor: { type: 'string' },
+      subTasks: { type: 'array', items: 'task' },
+      assignee: 'person'
+    }
+  },
 });
 
-window.registry = registry
+const storage = new ScatterStorage({ schemaRegistry: registry })
 
-React.render(
-  <div>test</div>,
-  document.getElementById('app')!
-)
+const sampleData: FromSchemaRegistry<typeof registry, 'task'> = {
+  name: 'go shopping',
+  assignee: { name: 'Tony' },
+  subTasks: [
+    { name: 'buy flowers' },
+    { name: 'buy chocolate' },
+  ]
+}
+
+const doc = storage.create('task', sampleData)
+
+const global = { registry, storage, doc }
+Object.assign(window, global)
+
+const root = ReactDOM.createRoot(document.getElementById('app')!);
+root.render(<div>
+
+  <ObjectInspector data={global} />
+
+</div>)

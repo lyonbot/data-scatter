@@ -34,12 +34,14 @@ export interface PatchedSchema<T> extends SchemaBase {
   readonly [patchedMark]: PatchedSchemaMeta
 
   /** the shortest schema name, like `task`, or `task/items` if is anonymous schema */
-  readonly $schemaId: string;
+  $schemaId: string;
 
   extends?: PatchedSchema<any>[]
 
   isObject(): this is PatchedObjectSchema<T>;
   isArray(): this is PatchedArraySchema<T>;
+
+  isExtendedFrom(otherSchema: PatchedSchema<any>): boolean;
 
   getDirectChildSchema<K extends keyof T>(key: K): PatchedSchema<T[K]> | null
   getDirectChildSchema(key: string | number): PatchedSchema<any> | null
@@ -66,7 +68,6 @@ export function createPatchedSchema<T>(
   schemaId: string
 ) {
   const ans: PatchedSchema<T> = Object.create(patchedSchemaPrototype)
-  Object.assign(ans, schema)
 
   const meta: PatchedSchemaMeta = {
     schemaId,
@@ -77,7 +78,8 @@ export function createPatchedSchema<T>(
 
   // ans[patchedMark] = meta
   Object.defineProperty(ans, patchedMark, { enumerable: false, configurable: false, value: meta })
-  Object.defineProperty(ans, '$schemaId', { enumerable: false, configurable: false, value: schemaId })
+  ans.$schemaId = schemaId
+  Object.assign(ans, schema)
 
   initCtx.generatorQueue.push((function* initializer() {
     if (Array.isArray(schema.extends) && schema.extends.length) {
@@ -104,6 +106,9 @@ export function createPatchedSchema<T>(
       /* istanbul ignore next */
       if ('extends' in ans) delete ans.extends
     }
+
+    Object.defineProperty(ans, patchedMark, { enumerable: false, configurable: false, value: meta })
+    ans.$schemaId = schemaId
 
     // ----------------------------------------------------------------
     // object: properties = { ... extends } + schema.properties?
@@ -172,9 +177,22 @@ export function createPatchedSchema<T>(
   return ans
 }
 
-const patchedSchemaPrototype: Partial<PatchedSchema<any>> = {
+const patchedSchemaPrototype: Partial<PatchedSchema<any>> & { constructor: any } = {
+  // make PatchedSchema looks good in DevTools
+  /* istanbul ignore next */
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  constructor: { PatchedSchema() { } }.PatchedSchema,
+
   isObject() { return this.type === 'object' },
   isArray() { return this.type === 'array' },
+
+  isExtendedFrom(other) {
+    if (other === this) return true
+    if (!this.extends) return false;
+    if (!isPatchedSchema(other)) return false;
+
+    return this.extends.some(it => it === other || it.isExtendedFrom(other))
+  },
 
   getDirectChildSchema(this: PatchedSchema<any>, key: any): PatchedSchema<any> | null {
     if (this.isObject()) {
@@ -216,6 +234,8 @@ const patchedSchemaPrototype: Partial<PatchedSchema<any>> = {
     return this.getDirectChildSchema(path)
   }
 }
+
+patchedSchemaPrototype.constructor.prototype = patchedSchemaPrototype
 
 /** @internal */
 export interface SchemaPatchingContext {

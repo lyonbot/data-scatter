@@ -13,9 +13,14 @@
   "license": "ISC",
   "dependencies": {
     "data-scatter": "workspace:*",
-    "preact": "^10.11.3"
+    "events": "^3.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-inspector": "^6.0.1"
   },
   "devDependencies": {
+    "@types/react": "^18.0.25",
+    "@types/react-dom": "^18.0.9",
     "dev-base": "workspace:*",
     "eslint-config-custom": "workspace:*",
     "vite": "^3.2.4"

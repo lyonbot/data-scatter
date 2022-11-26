@@ -98,6 +98,7 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
     if (oldNode) {
       if (oldNode.schema === schema) {
         // same schema. reuse old node
+        // TODO: support extended schema ? do isExtendedFrom check ?
         writeTo = oldNode
         oldNode.clear()
         Object.assign(oldNode.proxy, data.value)

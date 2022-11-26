@@ -22,7 +22,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
   readonly options: ScatterStorageInitOptions<SchemaTypeLUT>
 
   nodes = new Map<string, ScatterNodeInfo>()
-  nodesHaveNoReferrer = new Set<ScatterNodeInfo>()
+  orphanNodes = new Set<ScatterNodeInfo>()
 
   constructor(opts: ScatterStorageInitOptions<SchemaTypeLUT>) {
     super();
@@ -39,6 +39,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
    * 
    * @param copyDataFrom - by default, returns an empty object / array. you can also fill some data before returning, and some nodes might be created.
    */
+  create<T extends KeyOf<SchemaTypeLUT>>(schema: T, copyDataFrom?: SchemaTypeLUT[T]): SchemaTypeLUT[T]
   create<T extends KeyOf<SchemaTypeLUT>>(schema: T, copyDataFrom?: any): SchemaTypeLUT[T]
   create<T extends object = any>(schema: PatchedSchema<T>, copyDataFrom?: any): T
   create(schema: string | PatchedSchema<any> | Nil, copyDataFrom?: any): any {
@@ -83,7 +84,22 @@ let idCounter = 0
 
 export interface ScatterStorageInitOptions<SchemaTypeLUT extends TypeLUT> {
   schemaRegistry: SchemaRegistry<SchemaTypeLUT>
+  /**
+   * generate a node id for new nodes
+   */
   nodeIdGenerator?: NodeIdGenerator
+  /**
+   * Assuming `Admin` schema extends from `User`.
+   * 
+   * When assign an `Admin` object into `User` field, 
+   * by default, we think an `Admin` is also a `User` and directly make a reference.
+   * 
+   * if you want to treat them as two DIFFERENT TYPES,
+   * we will create a new `User` object, copy data into it and use the new object.
+   * 
+   * beware: object / array inside "Admin", could still be referenced directly, if their schemas is the same one.
+   */
+  disallowSubTypeAssign?: boolean
 }
 
 export type NodeIdGenerator = (storage: ScatterStorage, schema: PatchedSchema<any> | null) => string
