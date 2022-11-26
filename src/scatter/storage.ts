@@ -37,12 +37,17 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
    * 
    * all the reading / writing operations are proxied, **ScatterStorage** will automatically separate data and create nodes.
    * 
-   * @param copyDataFrom - by default, returns an empty object / array. you can also fill some data before returning, and some nodes might be created.
+   * @param fillDataWith - by default, returns an empty object / array.
+   * 
+   *    you can also fill fields before returning,
+   *    meanwhile we will create reference to existing referable nodes, and create some new nodes
+   * 
+   *    if you don't want to link existing nodes, do a cloneDeep first.
    */
-  create<T extends KeyOf<SchemaTypeLUT>>(schema: T, copyDataFrom?: SchemaTypeLUT[T]): SchemaTypeLUT[T]
-  create<T extends KeyOf<SchemaTypeLUT>>(schema: T, copyDataFrom?: any): SchemaTypeLUT[T]
-  create<T extends object = any>(schema: PatchedSchema<T>, copyDataFrom?: any): T
-  create(schema: string | PatchedSchema<any> | Nil, copyDataFrom?: any): any {
+  create<T extends KeyOf<SchemaTypeLUT>>(schema: T, fillDataWith?: SchemaTypeLUT[T]): SchemaTypeLUT[T]
+  create<T extends KeyOf<SchemaTypeLUT>>(schema: T, fillDataWith?: any): SchemaTypeLUT[T]
+  create<T extends object = any>(schema: PatchedSchema<T>, fillDataWith?: any): T
+  create(schema: string | PatchedSchema<any> | Nil, fillDataWith?: any): any {
     if (typeof schema === 'string') schema = this.schemaRegistry.get(schema)
     if (!schema) throw new Error('schema is required'); //schema = null
 
@@ -51,7 +56,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
 
     if (schema && (schema.type !== 'object' && schema.type !== 'array')) throw new Error('Schema type must be object or array')
 
-    if (copyDataFrom && typeof copyDataFrom === 'object') Object.assign(nodeInfo.proxy, copyDataFrom)
+    if (fillDataWith && typeof fillDataWith === 'object') Object.assign(nodeInfo.proxy, fillDataWith)
 
     return nodeInfo.proxy
   }
