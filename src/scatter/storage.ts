@@ -96,6 +96,59 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
   }
 
   /**
+   * scan nodes from some entries, then dispose all unreferenced nodes
+   */
+  treeshake(opts: {
+    /** can be nodeId, the object, the NodeInfo */
+    entries: Array<string | ScatterNodeInfo | any>
+
+    /** during first scan, mark more nodes to retain */
+    skips?: NodeSelector
+
+    /** called before disposing nodes. this is the last moment you can read the data */
+    beforeDispose?: (nodes: ScatterNodeInfo[]) => void
+  }) {
+    const scanQueue = Array.from(opts.entries, it => {
+      if (!it) return null;
+      if (typeof it === 'string') return this.nodes.get(it)
+      return this.getNodeInfo(it)
+    }).filter(Boolean) as ScatterNodeInfo[];
+
+    const toRemove = new Set(this.nodes.values())
+
+    for (let pass = 1; pass <= 2; pass++) {
+      // pass1: use opts.entries, then do `skips` check
+      // pass2: keep the "skipped" nodes and related
+
+      while (scanQueue.length) {
+        const item = scanQueue.shift()!
+        if (!toRemove.has(item)) continue;
+        toRemove.delete(item);
+
+        if (item.refsCount) scanQueue.push(...Object.values(item.refs!))
+      }
+
+      if (pass === 1) {
+        const skips = normalizeNodeSelector(opts.skips)
+        for (const node of toRemove) {
+          if (skips(node)) scanQueue.push(node)
+        }
+      }
+    }
+
+    const result = { ids: [] as Array<string> }
+
+    opts.beforeDispose?.(Array.from(toRemove))
+
+    for (const node of toRemove) {
+      result.ids.push(node.id)
+      node.dispose(true)
+    }
+
+    return result
+  }
+
+  /**
    * check if an object / array is from a node. if is, return the nodeInfo
    */
   getNodeInfo<T extends object = any>(x: any): ScatterNodeInfo<T> | null {

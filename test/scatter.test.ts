@@ -1,6 +1,5 @@
 import { createSchemaRegistry, FromSchemaRegistry } from '../src/schema'
 import { dumpNodesFromStorage, loadIntoStorage, ScatterNodeInfo, ScatterStorage } from '../src/scatter'
-import { omit } from 'lodash'
 
 describe('ScatterStorage', () => {
   const getSchemaRegistry = () => createSchemaRegistry({
@@ -222,6 +221,56 @@ describe('ScatterStorage', () => {
     storage.disposeOrphanNodes()
     expect(storage.orphanNodes.size).toBe(0)
     expect(storage.nodes.size).toBe(0)
+  })
+
+
+  test('treeshake', () => {
+    const storage = new ScatterStorage({ schemaRegistry: getSchemaRegistry() });
+
+    const task = storage.create('task')
+    Object.assign(task, {
+      name: 'shopping',
+      meta: {
+        foo: [task]   // circular!
+      },
+      subTasks: [
+        { name: 'flowers' }
+      ]
+    })
+
+    // -----------------------------
+    // hold task, create an orphan and dispose the orphan
+
+    const orphanNote = storage.create('note', {
+      message: 'this orphan be removed, even it referred task',
+      task
+    })
+    const result1 = storage.treeshake({ entries: [task] })
+    expect(result1.ids).toHaveLength(1)
+    expect(orphanNote).toEqual({}) // empty object
+
+    // ----------------------------
+    // hold task.subTasks + skips task = nothing happens
+
+    const subTasks = task.subTasks
+
+    const result2 = storage.treeshake({
+      entries: [subTasks],
+      skips: (_, nodeInfo) => nodeInfo.proxy === task
+    })
+    expect(result2.ids).toHaveLength(0)
+
+    // ----------------------------
+    // hold task.subTasks, dispose: task, task.meta, task.meta.foo
+
+    const $beforeDispose = jest.fn((nodes: any[]) => {
+      expect(nodes.length).toBe(3)
+    })
+    const result3 = storage.treeshake({ entries: [subTasks], beforeDispose: $beforeDispose })
+    expect($beforeDispose).toBeCalledTimes(1)
+    expect(result3.ids).toHaveLength(3)
+    expect(task).toEqual({})
+    expect(storage.nodes.size).toEqual(2)
   })
 
   test.each([true, false])('disallowSubTypeAssign: %p', (disallowSubTypeAssign) => {
