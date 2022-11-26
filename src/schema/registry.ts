@@ -10,13 +10,17 @@ const getCommonSchema = (id: CommonSchemaId) => {
 }
 
 export function createSchemaRegistry<
-  U extends { [k: string]: Schema<(keyof U & string)> | (keyof U & string) },
->(schemaLUT: U): SchemaRegistry<SchemaLUT2TypeLUT<U>>
+  U extends SchemaLUT<string & keyof U>,
+>(schemaLUT: U): SchemaRegistry<{
+  [k in string & keyof U]: SchemaLUT2TypeLUT<U>[k]
+}>
 
 export function createSchemaRegistry<
-  U extends { [k: string]: Schema<(keyof U & string)> | (keyof U & string) },
-  T2 extends TypeLUT
->(schemaLUT: U, extendsFrom: SchemaRegistry<T2>): SchemaRegistry<Spread<T2, SchemaLUT2TypeLUT<U>>>
+  T2 extends TypeLUT,
+  U extends SchemaLUT<string & (keyof T2 | keyof U), string & keyof U>,
+>(schemaLUT: U, extendsFrom: SchemaRegistry<T2>): SchemaRegistry<{
+  [k in string & (keyof T2 | keyof U)]: k extends keyof U ? SchemaLUT2TypeLUT<U>[k] : T2[k]
+}>
 
 export function createSchemaRegistry(schemaLUT: any, extendsFrom?: SchemaRegistry<any>) {
   if (extendsFrom instanceof SchemaRegistry) schemaLUT = { ...extendsFrom.schemaLUT, ...schemaLUT }

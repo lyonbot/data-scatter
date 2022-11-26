@@ -21,20 +21,20 @@ export interface PrimitiveTypeLUT {
 // ----------------------------------------------------------------
 // basic schema definitions
 
-export interface ObjectSchema<SchemaID = string> extends SchemaBase {
+export interface ObjectSchema<SchemaID extends string = string> extends SchemaBase {
   type: 'object',
   extends?: Array<Schema<SchemaID> | SchemaID>
   properties?: { [k: string]: Schema<SchemaID> | SchemaID | null }
   patternProperties?: { [k: string]: Schema<SchemaID> | SchemaID | null }
 }
 
-export interface ArraySchema<SchemaID = string> extends SchemaBase {
+export interface ArraySchema<SchemaID extends string = string> extends SchemaBase {
   type: 'array',
   extends?: Array<Schema<SchemaID> | SchemaID>
   items: Schema<SchemaID> | SchemaID
 }
 
-export interface PrimitiveSchema<SchemaID = string> extends SchemaBase {
+export interface PrimitiveSchema<SchemaID extends string = string> extends SchemaBase {
   type: keyof PrimitiveTypeLUT
   extends?: Array<Schema<SchemaID> | SchemaID>
 }
@@ -44,14 +44,14 @@ export { PatchedSchema as PatchedSchema }
 // ----------------------------------------------------------------
 // here comes magic
 
-export type Schema<SchemaID = string> =
+export type Schema<SchemaID extends string = string> =
   | ObjectSchema<SchemaID>
   | ArraySchema<SchemaID>
   | PrimitiveSchema<SchemaID>
   | PatchedSchema<any>
 
-export type SchemaLUT<SchemaID extends string = string> = {
-  [k in SchemaID]: Schema | SchemaID
+export type SchemaLUT<SchemaID extends string = string, SelfSchemaID extends string = SchemaID> = {
+  [k in SelfSchemaID]: Schema<SchemaID> | SchemaID
 }
 
 export type Schema2Type<S, LUT extends SchemaLUT = {}, UNKNOWN_TYPE = unknown> =
