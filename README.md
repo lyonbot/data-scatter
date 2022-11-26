@@ -150,6 +150,46 @@ The dumped format is:
 
 ## Tricks
 
+### How to Write Schema Definitions
+
+First of all, when referencing another schema, you can use:
+
+- schemaId like `"task"`
+- nested schema definition, like `{ type: 'string' }`
+- a Schema from a registry, like `registry.get('...')`
+
+The `anotherSchema` in examples, can be one of these three forms.
+
+```ts
+const objectSampleSchema = {
+  type: 'object',
+
+  properties: {
+    foo: 'schemaId',
+    bar: anotherSchema3,
+    baz: registry.get('...'),
+  },
+
+  // (optional) 
+  //   inherit from others: properties, patternProperties
+  //   priorities are lowest -- can be overridden by this schema self's definitions
+  extends: [anotherSchema1, anotherSchema2], 
+
+  // (optional)
+  //   If a property name matches the given regular expression, 
+  //   then assume that the property matches the corresponding schema.
+  patternProperties: {
+    '^str_': { type: 'string' },
+    '^num_': { type: 'number' },
+  },
+};
+
+const arraySampleSchema = {
+  type: 'array',
+  items: anotherSchema4, // schemaId, nested definition, or registry.get('...')
+};
+```
+
 ### Extend an existing Schema
 
 If you already have a `schemaRegistry`, and there is a `user` schema inside, and you **want to add a property**,

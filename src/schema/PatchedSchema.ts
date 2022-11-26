@@ -187,7 +187,6 @@ const patchedSchemaPrototype: Partial<PatchedSchema<any>> = {
 /** @internal */
 export interface SchemaPatchingContext {
   generatorQueue: Array<Generator>
-  patchedLUT: Record<string, PatchedSchema<any>>
   getPatchedSchema(x: any, preferredSchemaId: string): PatchedSchema<any>
   getCommonSchema(id: CommonSchemaId): PatchedSchema<any>
 }

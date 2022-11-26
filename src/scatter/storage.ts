@@ -12,17 +12,19 @@ export interface AutoScatterEvents<T extends TypeLUT = any> {
   /** 
    * fired when a node lost last reference from others.
    * 
-   * note: maybe later this node will be referred again, therefore, DO NOT DELETE NODE IMMEDIATELY!
+   * note: maybe someone will make new references laster, therefore, DO NOT DELETE THIS NODE IMMEDIATELY!
    */
-  nodeLostLastRef(storage: ScatterStorage<T>, nodeInfo: ScatterNodeInfo): void
+  nodeLostLastReferrer(storage: ScatterStorage<T>, nodeInfo: ScatterNodeInfo): void
 }
 
 export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEmitter<AutoScatterEvents> {
   readonly schemaRegistry: SchemaRegistry<SchemaTypeLUT>
+  readonly options: ScatterStorageInitOptions<SchemaTypeLUT>
 
   constructor(opts: ScatterStorageInitOptions<SchemaTypeLUT>) {
     super();
     this.schemaRegistry = opts.schemaRegistry
+    this.options = opts
   }
 
   /**
@@ -58,10 +60,12 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEm
 
   /**
    * allocate a new id for new node
-   * this can be rewritten by you
    */
   allocateId(nodeInfo: ScatterNodeInfo): string {
-    return (nodeInfo.schema?.$schemaId || '(unknown)') + idPrefix + (idCounter++).toString(16)
+    let name = this.options.nodeIdGenerator?.(this, nodeInfo.schema || null)  // user custom id generator
+    if (!name || typeof name !== 'string') name = (nodeInfo.schema?.$schemaId || '(unknown)') + idPrefix + (idCounter++).toString(16) // default id generator
+
+    return name
   }
 }
 
@@ -70,4 +74,7 @@ let idCounter = 0
 
 export interface ScatterStorageInitOptions<SchemaTypeLUT extends TypeLUT> {
   schemaRegistry: SchemaRegistry<SchemaTypeLUT>
+  nodeIdGenerator?: NodeIdGenerator
 }
+
+export type NodeIdGenerator = (storage: ScatterStorage, schema: PatchedSchema<any> | null) => string

@@ -33,10 +33,9 @@ class SchemaRegistry<T extends TypeLUT> {
     let refs = [] as [id: string, referTo: string][];
     const sInitCtx: SchemaPatchingContext = {
       generatorQueue: [],
-      patchedLUT: output,
       getCommonSchema,
       getPatchedSchema(input, preferredId) {
-        if (typeof input === 'string') input = output[input];
+        if (typeof input === 'string') input = querySchema(output, input);
 
         if (!input) throw new Error(`Missing schema for ${preferredId}`)
         if (isPatchedSchema(input)) return input;
@@ -91,14 +90,7 @@ class SchemaRegistry<T extends TypeLUT> {
   get<K extends keyof T>(query: K): PatchedSchema<T[K]>
   get(query: string): PatchedSchema<any> | Nil
   get(query: string) {
-    const ans = this.schemaLUT[query] as PatchedSchema<any> | Nil
-    if (!ans && query.includes('/')) {
-      const parts = query.split('/')
-      let ptr: any = this.schemaLUT[parts.shift()!]
-      while (ptr && parts.length) ptr = ptr[parts.shift()!]
-      if (isPatchedSchema(ptr)) return ptr
-    }
-    return ans
+    return querySchema(this.schemaLUT, query)
   }
 
   /**
@@ -149,3 +141,15 @@ export type { SchemaRegistry }
  *   const table1: MyTable = { ... }
  */
 export type FromSchemaRegistry<T extends SchemaRegistry<any>, K extends keyof T['schemaLUT']> = T['schemaLUT'][K] extends PatchedSchema<infer R> ? R : unknown
+
+
+function querySchema(schemaLUT: Record<string, PatchedSchema<any>>, query: string): PatchedSchema<any> | Nil {
+  const ans = schemaLUT[query] as PatchedSchema<any> | Nil
+  if (!ans && query.includes('/')) {
+    const parts = query.split('/')
+    let ptr: any = schemaLUT[parts.shift()!]
+    while (ptr && parts.length) ptr = ptr[parts.shift()!]
+    if (isPatchedSchema(ptr)) return ptr
+  }
+  return ans
+}

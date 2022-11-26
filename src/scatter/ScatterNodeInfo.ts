@@ -1,3 +1,4 @@
+import isObject from 'lodash/isObject';
 import { PatchedSchema } from "../schema";
 import { Nil } from "../types";
 import { hasOwn, makeEmptyLike } from "./utils";
@@ -5,7 +6,7 @@ import { ScatterStorage } from "./storage";
 
 export const objToInfoLUT = new WeakMap<any, ScatterNodeInfo>()
 
-const _proxyHandler: ProxyHandler<any> = {
+const proxyHandler: ProxyHandler<any> = {
   get(target, key, recv) {
     let self = objToInfoLUT.get(target)
     if (!hasOwn(target, key)) self = void 0
@@ -27,25 +28,36 @@ const _proxyHandler: ProxyHandler<any> = {
     }
 
     // this property is type defined
-    // we must make a node for it
-    // then make a ref
+    // if the `value` is
+    //
+    // 1. a proxy
+    //    - if is from same ScatterStorage, and have same schema? just use it
+    //    - otherwise, fallback to case 2
+    // 2. a object / array: make a node for it, then make a ref
+    // 3. other: normally set
+    //
+    // note: in any case, the old ref on this property key, must be removed, if presents.
 
-    let valueInfo = objToInfoLUT.get(value)
-    if (valueInfo && valueInfo.bus !== self.bus) {
-      valueInfo = void 0;   // not same context
-    }
+    let valueInfo: ScatterNodeInfo<any> | undefined
 
-    if (valueInfo) {
-      // already a node
-      if (valueInfo.schema !== propSchema) throw new Error('Schema mismatch!') // TODO: make a clone?
-    } else {
-      // not a node, make a data clone
+    // case 1 checking
+    if (
+      (valueInfo = objToInfoLUT.get(value)) &&
+      valueInfo.bus === self.bus &&
+      valueInfo.schema === propSchema
+    ) {
+      // case 1, pass
+    } else if (isObject(value)) {
+      // case 2, make a new node and clone data into it
       valueInfo = new ScatterNodeInfo(self.bus, makeEmptyLike(value), propSchema)
       Object.assign(valueInfo.proxy, value)
+    } else {
+      // case 3, no new node
+      valueInfo = void 0;
     }
 
     self._setRef(key, valueInfo)
-    return Reflect.set(target, key, valueInfo.proxy)
+    return Reflect.set(target, key, valueInfo ? valueInfo.proxy : value)
   },
   deleteProperty(target, key) {
     const self = objToInfoLUT.get(target)
@@ -74,8 +86,8 @@ export class ScatterNodeInfo<T extends object = any> {
     this.schema = schema
     if (Array.isArray(container)) this.isArray = true
 
-    this.proxy = new Proxy(container, _proxyHandler)
-    
+    this.proxy = new Proxy(container, proxyHandler)
+
     objToInfoLUT.set(container, this)
     objToInfoLUT.set(this.proxy, this)
     objToInfoLUT.set(this, this)
@@ -106,11 +118,12 @@ export class ScatterNodeInfo<T extends object = any> {
 
   /** when other is unreferring this node, they shall call this */
   _minusReferredCount() {
+    /* istanbul ignore if */
     if (!this.referredCount) return
     if (--this.referredCount) return
 
     // this node is no more referenced. tell bus and bus will clean up later.
-    this.bus?.emit('nodeLostLastRef', this.bus, this)
+    this.bus?.emit('nodeLostLastReferrer', this.bus, this)
   }
 
   /** reset this node's content and refs */
