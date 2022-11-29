@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { ObjectInspector } from 'react-inspector';
 import { CommandInput } from '../CommandInput';
+import { MyInspector } from '../MyInspector';
+import { CodeSnippet } from './runmode';
 import "./style.scss"
 
 export const DebugPanel = () => {
@@ -18,16 +19,22 @@ export const DebugPanel = () => {
 
     log(<div>
       <div className="debugPanel-indicator isGrey">&raquo;</div>
-      <pre className='debugPanel-pre'>{code}</pre>
+      <pre className='debugPanel-pre'><CodeSnippet code={code} /></pre>
     </div>);
     try {
+      console.log("%c%s", "color:#35f", code)
       const result = await fn();
-      if (typeof result !== 'undefined')
-        log(<div><ObjectInspector data={result} /></div>);
+      if (typeof result !== 'undefined') {
+        console.log(result)
+        log(<div><MyInspector data={result} /></div>);
+      }
     } catch (error) {
+      console.error(error)
       log(<div className="isError">
-        <div className="debugPanel-indicator isGrey">❌</div>
-        <ObjectInspector data={error} />
+        <div className="debugPanel-indicator">
+          <span className="debugPanel-errorMark">!</span>
+        </div>
+        <MyInspector data={error} />
       </div>);
     }
   }, []);

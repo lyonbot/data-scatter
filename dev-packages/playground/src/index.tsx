@@ -1,8 +1,8 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import { ObjectInspector } from 'react-inspector'
 import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage } from 'data-scatter'
 import { DebugPanel } from './DebugPanel';
+import { MyInspector } from './MyInspector';
 
 declare module "data-scatter" {
 
@@ -85,6 +85,6 @@ const root = ReactDOM.createRoot(document.getElementById('app')!);
 root.render(<div>
 
   <DebugPanel />
-  <ObjectInspector data={global} />
+  <MyInspector data={global} />
 
 </div>)

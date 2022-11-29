@@ -1,0 +1,32 @@
+.myInspector {
+  &-node {
+    position: relative;
+
+    &.isActive {
+      text-shadow: 0 1px #ec3;
+    }
+  }
+
+  &-popover {
+    position: absolute;
+    bottom: 100%;
+    z-index: 1;
+    background-color: #0009;
+    color: #fff;
+    padding: 2px 4px;
+    text-shadow: none;
+    opacity: 0.5;
+
+    &:hover{
+      opacity: 1;
+    }
+  }
+
+  &-button {
+    cursor: pointer;
+    &:hover {
+      text-shadow: 0 1px #960;
+      color: #ec3;
+    }
+  }
+}
