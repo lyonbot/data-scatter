@@ -1,0 +1,85 @@
+.debugPanel {
+  $indent: 24px;
+  $padding: 4px;
+  $borderColor: #999;
+  $fontSize: 13px;
+
+  display: flex;
+  flex-direction: column;
+  border: 1px solid $borderColor;
+  font-size: $fontSize;
+  line-height: normal;
+
+  &-pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  &-row {
+    position: relative;
+    padding: $padding;
+    padding-left: $indent + $padding;
+    min-height: $fontSize + $padding * 2;
+    box-sizing: border-box;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid $borderColor;
+    }
+
+    &.isError {
+      color: #600;
+
+      &::before {
+        position: absolute;
+        inset: 0;
+        background-color: #f99;
+        opacity: 0.3;
+        pointer-events: none;
+        content: ' ';
+        mix-blend-mode: multiply;
+      }
+    }
+  }
+
+  &-indicator {
+    position: absolute;
+    left: $padding;
+    top: $padding;
+    width: $indent;
+    text-align: center;
+
+    &.isBlue {
+      color: #069;
+    }
+
+    &.isGrey {
+      color: #ccc;
+    }
+  }
+
+  &-input {
+    @extend .debugPanel-row;
+
+    >.commandInput {
+      margin: -2px;
+    }
+
+    .CodeMirror pre.CodeMirror-line,
+    .CodeMirror pre.CodeMirror-line-like {
+      font-size: $fontSize;
+    }
+  }
+
+  &-logs {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+
+    &:not(:empty) {
+      border-bottom: 1px solid $borderColor;
+    }
+  }
+}

@@ -4,6 +4,7 @@
     "noEmit": true,
     "module": "ES2020",
     "rootDir": "src",
+    "allowJs": true,
     "jsx": "react"
   },
   "include": ["src"],

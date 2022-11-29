@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "codemirror": "5",
     "data-scatter": "workspace:*",
     "events": "^3.3.0",
     "react": "^18.2.0",
@@ -19,10 +20,12 @@
     "react-inspector": "^6.0.1"
   },
   "devDependencies": {
+    "@types/codemirror": "5",
     "@types/react": "^18.0.25",
     "@types/react-dom": "^18.0.9",
     "dev-base": "workspace:*",
     "eslint-config-custom": "workspace:*",
+    "sass": "^1.56.1",
     "vite": "^3.2.4"
   }
 }
