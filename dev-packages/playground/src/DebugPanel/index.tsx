@@ -1,10 +1,14 @@
 import * as React from 'react';
 import { CommandInput } from '../CommandInput';
+import { useLast } from '../hooks';
 import { MyInspector } from '../MyInspector';
 import { CodeSnippet } from './runmode';
 import "./style.scss"
 
-export const DebugPanel = () => {
+export const DebugPanel = (_props: React.HTMLProps<HTMLDivElement>) => {
+  const logsDiv = React.useRef<HTMLDivElement>(null)
+  const props = useLast(_props)
+
   const [records, updateRecords] = React.useState<React.ReactElement[]>([]);
   const clearRecords = React.useCallback(() => updateRecords([]), []);
 
@@ -38,8 +42,17 @@ export const DebugPanel = () => {
       </div>);
     }
   }, []);
-  return <div className="debugPanel">
-    <div className="debugPanel-logs">
+
+
+  React.useEffect(() => {
+    const div = logsDiv.current
+    if (!div) return;
+
+    div.scrollTo(0, div.scrollHeight)
+  }, [records.length])
+
+  return <div className="debugPanel" {...otherProps}>
+    <div className="debugPanel-logs" ref={logsDiv}>
       {records}
     </div>
     <div className="debugPanel-input">

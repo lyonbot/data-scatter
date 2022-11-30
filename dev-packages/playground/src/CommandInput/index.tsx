@@ -11,6 +11,7 @@ import './style.scss'
 type Props = React.PropsWithoutRef<{
   value?: string
   placeholder?: string
+  onChange?: (code: string) => void
   onSubmit?: (code: string, fn: () => Promise<any>) => Promise<void> | void;
 }>;
 
@@ -75,6 +76,10 @@ export const CommandInput = React.memo((_props: Props) => {
 
     cm.on('keyup', (instance, event) => {
       if (event.code === 'Period') cm.execCommand('autocomplete')
+    })
+
+    cm.on('changes', () => {
+      props.current.onChange?.(cm.getValue())
     })
   }, [])
 

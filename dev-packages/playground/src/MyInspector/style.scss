@@ -12,18 +12,31 @@
     bottom: 100%;
     z-index: 1;
     background-color: #0009;
-    color: #fff;
-    padding: 2px 4px;
+    padding: 0;
     text-shadow: none;
     opacity: 0.5;
+    color: transparent;
+    white-space: nowrap;
+    transform: translate(-50%);
+    transition: .2s;
+    overflow: hidden;
+    width: 16px;
+    height: 16px;
+    border-radius: 16px 16px 0 0;
 
-    &:hover{
+    &:hover {
+      border-radius: 2px;
       opacity: 1;
+      color: #fff;
+      padding: 4px 6px;
+      width: fit-content;
+      height: fit-content;
     }
   }
 
   &-button {
     cursor: pointer;
+
     &:hover {
       text-shadow: 0 1px #960;
       color: #ec3;
