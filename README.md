@@ -227,6 +227,46 @@ const arraySampleSchema = {
 };
 ```
 
+### What is PatchedSchema
+
+In DevTool Console, the type of `registry.get('...')` is displayed as ***PatchedSchema***.
+
+A *PatchedSchema* object:
+
+- its content is the same as the corresponding raw schema declaration
+
+- all (nested) schemas declaraions and references, are normalized to *PatchedSchema*
+
+  - `extends`
+  - `items` of array schema
+  - `properties.*` of object schema
+
+- could have self-referencing loop, do not serialize it.
+
+- added some util methods and fields
+
+  - `$schemaId: string`
+
+    the shortest schema name, like `"task"`, or `"task/items"` if is anonymous schema
+  - `isObject(): boolean`
+  - `isArray(): boolean`
+  - `getSchemaAtPath(dataPath: string | number | string[]): PatchedSchema | null`
+
+    query a (nested) property / item's schema, if this schema's type is object or array.
+
+    the `dataPath` could be `"propertyName"`, `123`, `"author.email"` or `["author", "email"]`
+
+  - `isExtendedFrom(otherSchema: PatchedSchema): boolean`
+  
+     recursively check if the schema is extended form `otherSchema`
+     
+     caveats:
+     
+     - returns **true** if `this === otherSchema`
+     - returns **false** if `otherSchema` is null
+
+To check if an object is *PatchedSchema*, call `isPatchedSchema(obj)`
+
 ### Extend an existing Schema
 
 If you already have a `schemaRegistry`, and there is a `user` schema inside, and you **want to add a property**,

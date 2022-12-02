@@ -1,3 +1,4 @@
+import { debounce } from 'lodash';
 import * as React from 'react';
 import { ObjectInspector, ObjectRootLabel, ObjectLabel } from 'react-inspector';
 import './style.scss'
@@ -37,7 +38,7 @@ const onMouseEnter = (ev: React.MouseEvent) => {
 
   const rect = activeTarget.getBoundingClientRect()
   activeTarget.appendChild(popover)
-  const left = Math.min(ev.clientX - rect.left, rect.right - 20)
+  const left = Math.min(ev.clientX - rect.left + 10, rect.right - 40)
   popover.style.left = left + "px"
 }
 
@@ -45,7 +46,7 @@ const onMouseLeave = (ev: React.MouseEvent) => {
   if (ev.currentTarget !== activeTarget) return;
   activeTarget.classList.remove('isActive')
   activeTarget = null;
-  copy.textContent = 'save'
+  revertCopiedTextLater.flush()
   popover.remove()
 }
 
@@ -63,11 +64,15 @@ copy.addEventListener('click', () => {
   window.$temp1 = window.$temp0
   window.$temp0 = window.$temp = data
   copy.textContent = '✔ $temp'
-  setTimeout(() => copy.textContent = 'save', 1900)
+  revertCopiedTextLater()
 })
+
+const revertCopiedTextLater = debounce(() => {
+  copy.textContent = 'save'
+}, 1900, { leading: false })
 
 popover.appendChild(copy)
 
-export const MyInspector = React.forwardRef((props: { data: any }) => {
+export const MyInspector = React.memo((props: { data: any }) => {
   return <ObjectInspector data={props.data} nodeRenderer={nodeRenderer} />
 })

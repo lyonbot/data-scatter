@@ -76,6 +76,7 @@
 
   &-input {
     @extend .debugPanel-row;
+    border-bottom-color: #eee !important;
 
     >.commandInput {
       margin: -2px;
@@ -106,5 +107,9 @@
     &:not(:empty) {
       border-bottom: 1px solid $borderColor;
     }
+  }
+  
+  &-instant {
+    @extend .debugPanel-row;
   }
 }

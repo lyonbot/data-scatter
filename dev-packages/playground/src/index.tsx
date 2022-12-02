@@ -84,7 +84,7 @@ Object.assign(window, global)
 const root = ReactDOM.createRoot(document.getElementById('app')!);
 root.render(<div>
 
-  <DebugPanel />
+  <DebugPanel placeholder="data.xxx" />
   <MyInspector data={global} />
 
 </div>)

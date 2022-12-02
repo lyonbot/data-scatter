@@ -11,7 +11,10 @@ import './style.scss'
 type Props = React.PropsWithoutRef<{
   value?: string
   placeholder?: string
+  onReady?: (cm: CodeMirror.Editor) => void
   onChange?: (code: string) => void
+  onKeyDown?: (cm: CodeMirror.Editor, event: KeyboardEvent) => void
+  onKeyUp?: (cm: CodeMirror.Editor, event: KeyboardEvent) => void
   onSubmit?: (code: string, fn: () => Promise<any>) => Promise<void> | void;
 }>;
 
@@ -19,8 +22,7 @@ export const CommandInput = React.memo((_props: Props) => {
   const $cm = React.useRef<CodeMirror.Editor | null>(null)
   const $el = React.useRef<HTMLDivElement>(null)
   const props = React.useRef<Props>(_props)
-  const getEditor = React.useCallback(() => $cm.current!, [])
-  const [isReady, setReady] = React.useState(false)
+  const [, setReady] = React.useState(false)
 
   React.useEffect(() => {
     const cm = CodeMirror($el.current!, {
@@ -74,13 +76,28 @@ export const CommandInput = React.memo((_props: Props) => {
       }
     })
 
+    let isHintShown = false
+    cm.on('startCompletion', () => void (isHintShown = true));
+    cm.on('endCompletion', () => void (isHintShown = false));
+
+    cm.on('keydown', (instance, event) => {
+      if (!isHintShown) {
+        props.current.onKeyDown?.(cm, event)
+      }
+    })
+
     cm.on('keyup', (instance, event) => {
-      if (event.code === 'Period') cm.execCommand('autocomplete')
+      if (!isHintShown) {
+        props.current.onKeyUp?.(cm, event)
+        if (event.code === 'Period') cm.execCommand('autocomplete')
+      }
     })
 
     cm.on('changes', () => {
       props.current.onChange?.(cm.getValue())
     })
+
+    props.current.onReady?.(cm)
   }, [])
 
   const cm = $cm.current

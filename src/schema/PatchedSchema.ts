@@ -41,12 +41,24 @@ export interface PatchedSchema<T> extends SchemaBase {
   isObject(): this is PatchedObjectSchema<T>;
   isArray(): this is PatchedArraySchema<T>;
 
+  /**
+   * recursively check if the schema is extended form `otherSchema`
+   * 
+   * caveats: 
+   * 
+   * - returns **true** if `this === otherSchema`
+   * - returns **false** if `otherSchema` is null
+   */
   isExtendedFrom(otherSchema: PatchedSchema<any> | Nil): boolean;
 
   getDirectChildSchema<K extends keyof T>(key: K): PatchedSchema<T[K]> | null
   getDirectChildSchema(key: string | number): PatchedSchema<any> | null
 
-  /** query another schema via data path */
+  /**
+   * query a (nested) property / item's schema, if this schema's type is object or array.
+   *
+   * @param dataPath could be `"propertyName"`, `123`, `"author.email"` or `["author", "email"]`
+   */
   getSchemaAtPath(path: string | number | (string | number)[]): PatchedSchema<any> | null
 }
 

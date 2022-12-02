@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "classnames": "^2.3.2",
     "codemirror": "5",
     "data-scatter": "workspace:*",
     "events": "^3.3.0",

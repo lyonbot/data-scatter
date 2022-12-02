@@ -11,22 +11,23 @@
     position: absolute;
     bottom: 100%;
     z-index: 1;
-    background-color: #0009;
+    background-color: #ec3;
     padding: 0;
     text-shadow: none;
     opacity: 0.5;
     color: transparent;
     white-space: nowrap;
-    transform: translate(-50%);
+    transform: translate(-20%, 20%);
     transition: .2s;
     overflow: hidden;
-    width: 16px;
-    height: 16px;
-    border-radius: 16px 16px 0 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 12px;
 
     &:hover {
       border-radius: 2px;
       opacity: 1;
+      background-color: #0009;
       color: #fff;
       padding: 4px 6px;
       width: fit-content;
