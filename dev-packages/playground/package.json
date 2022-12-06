@@ -15,7 +15,6 @@
     "classnames": "^2.3.2",
     "codemirror": "5",
     "data-scatter": "workspace:*",
-    "events": "^3.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-inspector": "^6.0.1"

@@ -16,11 +16,9 @@ importers:
       lodash: ^4.17.21
       npm-run-all: ^4.1.5
       rimraf: ^3.0.2
-      tiny-typed-emitter: ^2.1.0
       typescript: ^4.5.2
     dependencies:
       lodash: 4.17.21
-      tiny-typed-emitter: 2.1.0
     devDependencies:
       '@types/jest': 29.2.3
       '@types/lodash': 4.14.190
@@ -70,7 +68,6 @@ importers:
       data-scatter: workspace:*
       dev-base: workspace:*
       eslint-config-custom: workspace:*
-      events: ^3.3.0
       react: ^18.2.0
       react-dom: ^18.2.0
       react-inspector: ^6.0.1
@@ -80,7 +77,6 @@ importers:
       classnames: 2.3.2
       codemirror: 5.65.10
       data-scatter: link:../..
-      events: 3.3.0
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
       react-inspector: 6.0.1_react@18.2.0
@@ -928,13 +924,13 @@ packages:
     dev: true
 
   /@types/react-dom/18.0.9:
-    resolution: {integrity: sha512-qnVvHxASt/H7i+XG1U1xMiY5t+IHcPGUK7TDMDzom08xa7e86eCeKOiLZezwCKVxJn6NEiiy2ekgX8aQssjIKg==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/@types/react-dom/-/react-dom-18.0.9.tgz}
+    resolution: {integrity: sha512-qnVvHxASt/H7i+XG1U1xMiY5t+IHcPGUK7TDMDzom08xa7e86eCeKOiLZezwCKVxJn6NEiiy2ekgX8aQssjIKg==}
     dependencies:
       '@types/react': 18.0.25
     dev: true
 
   /@types/react/18.0.25:
-    resolution: {integrity: sha512-xD6c0KDT4m7n9uD4ZHi02lzskaiqcBxf4zi+tXZY98a04wvc0hi/TcCPC2FOESZi51Nd7tlUeOJY8RofL799/g==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/@types/react/-/react-18.0.25.tgz}
+    resolution: {integrity: sha512-xD6c0KDT4m7n9uD4ZHi02lzskaiqcBxf4zi+tXZY98a04wvc0hi/TcCPC2FOESZi51Nd7tlUeOJY8RofL799/g==}
     dependencies:
       '@types/prop-types': 15.7.5
       '@types/scheduler': 0.16.2
@@ -2175,11 +2171,6 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
-  /events/3.3.0:
-    resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/events/-/events-3.3.0.tgz}
-    engines: {node: '>=0.8.x'}
-    dev: false
-
   /exec-sh/0.3.6:
     resolution: {integrity: sha512-nQn+hI3yp+oD0huYhKwvYI32+JFeq+XkNcD1GAo3Y/MjxsfVGmrrzrnzjWiNY6f+pUCP440fThsFh5gZrRAU/w==}
     dev: true
@@ -3081,7 +3072,7 @@ packages:
       sane: 4.1.0
       walker: 1.0.8
     optionalDependencies:
-      fsevents: mirrors.tencent.com/fsevents/2.3.2
+      fsevents: 2.3.2
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -3510,7 +3501,7 @@ packages:
     dev: false
 
   /loose-envify/1.4.0:
-    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/loose-envify/-/loose-envify-1.4.0.tgz}
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
     dependencies:
       js-tokens: 4.0.0
@@ -4001,7 +3992,7 @@ packages:
     dev: false
 
   /react-dom/18.2.0_react@18.2.0:
-    resolution: {integrity: sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/react-dom/-/react-dom-18.2.0.tgz}
+    resolution: {integrity: sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==}
     peerDependencies:
       react: ^18.2.0
     dependencies:
@@ -4011,7 +4002,7 @@ packages:
     dev: false
 
   /react-inspector/6.0.1_react@18.2.0:
-    resolution: {integrity: sha512-cxKSeFTf7jpSSVddm66sKdolG90qURAX3g1roTeaN6x0YEbtWc8JpmFN9+yIqLNH2uEkYerWLtJZIXRIFuBKrg==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/react-inspector/-/react-inspector-6.0.1.tgz}
+    resolution: {integrity: sha512-cxKSeFTf7jpSSVddm66sKdolG90qURAX3g1roTeaN6x0YEbtWc8JpmFN9+yIqLNH2uEkYerWLtJZIXRIFuBKrg==}
     peerDependencies:
       react: ^16.8.4 || ^17.0.0 || ^18.0.0
     dependencies:
@@ -4027,7 +4018,7 @@ packages:
     dev: true
 
   /react/18.2.0:
-    resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/react/-/react-18.2.0.tgz}
+    resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==}
     engines: {node: '>=0.10.0'}
     dependencies:
       loose-envify: 1.4.0
@@ -4213,7 +4204,7 @@ packages:
     dev: true
 
   /scheduler/0.23.0:
-    resolution: {integrity: sha512-CtuThmgHNg7zIZWAXi3AsyIzA3n4xx7aNyjwC2VJldO2LMVDhFK+63xGqq6CsJH4rTAt6/M+N4GhZiDYPx9eUw==, registry: https://mirrors.cloud.tencent.com/npm/, tarball: https://mirrors.cloud.tencent.com/npm/scheduler/-/scheduler-0.23.0.tgz}
+    resolution: {integrity: sha512-CtuThmgHNg7zIZWAXi3AsyIzA3n4xx7aNyjwC2VJldO2LMVDhFK+63xGqq6CsJH4rTAt6/M+N4GhZiDYPx9eUw==}
     dependencies:
       loose-envify: 1.4.0
     dev: false
@@ -4538,10 +4529,6 @@ packages:
 
   /text-table/0.2.0:
     resolution: {integrity: sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=}
-
-  /tiny-typed-emitter/2.1.0:
-    resolution: {integrity: sha512-qVtvMxeXbVej0cQWKqVSSAHmKZEHAvxdF8HEUBFWts8h+xEo5m/lEiPakuyZ3BnCBjOD8i24kzNOiOLLgsSxhA==}
-    dev: false
 
   /tmpl/1.0.5:
     resolution: {integrity: sha512-3f0uOEAQwIqGuWW2MVzYg8fV/QNnc/IpuJNG837rLuczAaLVHslWHZQj4IGiEl5Hs3kkbhwL9Ab7Hrsmuj+Smw==}

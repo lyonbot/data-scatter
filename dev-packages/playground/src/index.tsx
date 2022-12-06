@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage } from 'data-scatter'
+import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage, loadIntoStorage, dumpOneNode, dumpNodesFromStorage } from 'data-scatter'
 import { DebugPanel } from './DebugPanel';
 import { MyInspector } from './MyInspector';
 
@@ -77,7 +77,16 @@ const sampleData: FromSchemaRegistry<typeof registry, 'task'> = {
 
 const doc = storage.create('task', sampleData)
 
-const global = { registry, storage, doc }
+const global = {
+  registry,
+  storage,
+  doc,
+  createSchemaRegistry,
+  ScatterStorage,
+  loadIntoStorage,
+  dumpOneNode,
+  dumpNodesFromStorage,
+}
 Object.assign(window, global)
 
 
@@ -85,6 +94,6 @@ const root = ReactDOM.createRoot(document.getElementById('app')!);
 root.render(<div>
 
   <DebugPanel placeholder="data.xxx" />
-  <MyInspector data={global} />
+  <MyInspector data={global} onClick={(x) => console.log(x)} />
 
 </div>)

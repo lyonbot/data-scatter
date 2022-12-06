@@ -1,4 +1,4 @@
-import { TypedEmitter } from "tiny-typed-emitter"
+import { EventEmitter } from "../EventEmitter";
 import { TypeLUT, SchemaRegistry, PatchedSchema } from "../schema"
 import { Nil, KeyOf } from "../types";
 import { ScatterNodeInfo, objToInfoLUT } from "./ScatterNodeInfo";
@@ -18,7 +18,7 @@ export interface AutoScatterEvents<T extends TypeLUT = any> {
   nodeLostLastReferrer(storage: ScatterStorage<T>, nodeInfo: ScatterNodeInfo): void
 }
 
-export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends TypedEmitter<AutoScatterEvents> {
+export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEmitter<AutoScatterEvents<SchemaTypeLUT>> {
   readonly schemaRegistry: SchemaRegistry<SchemaTypeLUT>
   readonly options: ScatterStorageInitOptions<SchemaTypeLUT>
 
