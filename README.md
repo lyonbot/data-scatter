@@ -11,6 +11,7 @@
 4. Manipulate the object / array in arbitrary ways you like.
 
    - ScatterStorage will automatically create and manage nodes. Feel free to `data.xxx = {...}`
+   - there is no auto garage-collect, you shall [Clean unused Nodes](#clean-unused-nodes) at the appropriate moment
    - meanwhile, you can use [**NodeContentObserver**](#NodeContentObserver) to collect dependencies and edits.
 
 5. [Load and Dump Nodes](#Load-and-Dump-Nodes), (de)serialize all nodes and references
@@ -93,36 +94,61 @@ You can also implement `function nodeIdGenerator(storage, schema?): string` and 
 Note:
 
 - This id can be ugly because it is invisible to users and only used in ScatterStorage.
-- When load / dump nodes, we use nodeId to replace current existing nodes
+- When load / dump nodes, we use nodeId to match and update existing nodes
+
+### Clean unused Nodes
+
+When nodes lost last referrer, the `storage` will fire `"nodeLostLastReferrer"` event.
+
+When event is fired, DO NOT IMMEDIATELY start cleaning -- the node might be reused soon. It's suggested to wait for few seconds.
+
+You can use these methods to do clean-up
+
+#### `storage.treeshake({ entries, skips?, beforeDispose? })`
+
+scan nodes from entries, then dispose all unreferenced nodes
+
+- `entries` - one or many (nodeId / NodeInfo / array or object managed by this storage)
+- `skips` - optional, array of nodeId, or `(id: string, nodeInfo: NodeInfo) => boolean`
+- `beforeDispose` -- called with `NodeInfo[]` before disposing nodes. this is the last moment you can read the data
+
+#### `storage.disposeOrphanNodes()`
+
+remove orphan nodes, but will reserve nodes that have self-referencing loop inside
+
+- `skips` - optional, array of nodeId, or `(id: string, nodeInfo: NodeInfo) => boolean`
 
 <br/>
 
 ## Load and Dump Nodes
 
-This library provides two methods for you. While loading / dumping, all the referencing relations are retained.
-
 ### `loadIntoStorage({ storage, nodes, loader? })`
 
-Load nodes into this storage.
+Load nodes into a storage.
 
 - `nodes`: array in the dumped format
 
 - `loader`: (optional) - called when met broken references
 
   - accepts one parameter: `nodeId: string`
-  - returns `null`, data in dumped format, or existing object from `storage.get(...)`
   - can be an async function, but the `loadIntoStorage` will become async too (don't forget _await_)
+  - the return value could be
+    - `null`
+    - node data in dumped format
+    - or existing object from `storage.get(...)`
+    - or a NodeInfo from `storage.getNodeInfo(...)`
+    - or a nodeId string that exists in the storage
 
 If met same **nodeId** in current storage:
 
 - Same Schema? Clear current node's content and use loaded data.
-- Different? Make a new id for the old node.
+- Different? Rename the existing node.
 
 Returns `{ loaded, updated, renamed }` when loaded.
 
-- `loaded`: NodeInfo list, including new and updated nodes.
+- `loaded`: Array of NodeInfo, including new and updated nodes.
 
-- `updated`: NodeInfo list
+- `updated`: Array of NodeInfo
 
 - `renamed`: Array of `{ nodeInfo, oldId }`
 
@@ -138,7 +164,7 @@ Returns `{ output, skippedNodes }`
 
 - `output`: array in the dumped format
 
-- `skippedNodes`: NodeInfo list, these nodes are not dumped
+- `skippedNodes`: Array of NodeInfo, these nodes are not included in `output`
 
 ### Dumped Format
 

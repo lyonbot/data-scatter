@@ -194,14 +194,9 @@ export function dumpNodesFromStorage(opts: {
   const output: DumpedNodeInfo[] = []
   const skippedNodes: ScatterNodeInfo[] = []
 
-  const queue = Array.from(opts.nodes, x => {
-    if (typeof x === 'string') return storage.nodes.get(x)
-    return storage.getNodeInfo(x)
-  })
+  const queue = storage.getNodeInfos(opts.nodes)
 
   for (let nodeInfo: ScatterNodeInfo; queue && (nodeInfo = queue.shift()!);) {
-    if (!nodeInfo) continue
-
     if (visited.has(nodeInfo)) continue
     visited.add(nodeInfo)
 

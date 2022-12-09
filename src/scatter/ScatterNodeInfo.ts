@@ -237,7 +237,7 @@ export class ScatterNodeInfo<T extends object = any> {
     this.referredCount++;
   }
 
-  /** when other is unreferring this node, they shall call this */
+  /** when other nodes are about to unreference this node, they shall call this */
   _minusReferredCount() {
     /* istanbul ignore if */
     if (!this.referredCount) return
