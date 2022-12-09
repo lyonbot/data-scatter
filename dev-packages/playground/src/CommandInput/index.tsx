@@ -16,6 +16,8 @@ type Props = React.PropsWithoutRef<{
   onKeyDown?: (cm: CodeMirror.Editor, event: KeyboardEvent) => void
   onKeyUp?: (cm: CodeMirror.Editor, event: KeyboardEvent) => void
   onSubmit?: (code: string, fn: () => Promise<any>) => Promise<void> | void;
+  /** separated by comma */
+  functionArgumentList?: string | string[]
 }>;
 
 export const CommandInput = React.memo((_props: Props) => {
@@ -58,9 +60,9 @@ export const CommandInput = React.memo((_props: Props) => {
             // make an async function
 
             try {
-              fn = new Function(`return (async function(){ return (${value}\n); }).apply(this, arguments)`)
+              fn = new Function(`return (async function(${props.current.functionArgumentList || ''}){ return (${value}\n); }).apply(this, arguments)`)
             } catch {
-              fn = new Function(`return (async function(){ ${value}\n; }).apply(this, arguments)`)
+              fn = new Function(`return (async function(${props.current.functionArgumentList || ''}){ ${value}\n; }).apply(this, arguments)`)
             }
 
             // callback

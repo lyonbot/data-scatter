@@ -43,6 +43,20 @@
         mix-blend-mode: multiply;
       }
     }
+
+    &.isWarn {
+      color: #630;
+
+      &::before {
+        position: absolute;
+        inset: 0;
+        background-color: #ff9;
+        opacity: 0.3;
+        pointer-events: none;
+        content: ' ';
+        mix-blend-mode: multiply;
+      }
+    }
   }
 
   &-indicator {
@@ -64,6 +78,18 @@
 
   &-errorMark {
     background-color: #c33;
+    color: #fff;
+    width: 1em;
+    padding: 2px;
+    margin: -2px;
+    border-radius: 100%;
+    height: 1em;
+    display: inline-block;
+    text-align: center;
+  }
+
+  &-warnMark {
+    background-color: #ca6;
     color: #fff;
     width: 1em;
     padding: 2px;

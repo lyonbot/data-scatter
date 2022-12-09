@@ -32,8 +32,8 @@ export const DebugPanel = (_props: Props) => {
     updateRecords([]);
   }, []);
 
-  const handleCommandSubmit = React.useCallback(async (code: string, fn: () => Promise<any>) => {
-    const log = (...items: React.ReactElement[]) => updateRecords(x => {
+  const { addRecord, fakeConsole } = React.useMemo(() => {
+    const addRecord = (...items: React.ReactElement[]) => updateRecords(x => {
       const origLength = x.length;
       return x.concat(items.map((item, index) => React.cloneElement(item, {
         key: index + origLength,
@@ -41,26 +41,40 @@ export const DebugPanel = (_props: Props) => {
       })));
     });
 
-    log(<div>
+    const fakeConsole = Object.create(console);
+    {
+      fakeConsole.log = (...args: any[]) => (addRecord(<div>
+        {consolePrint2VDom(args)}
+      </div>), console.log(...args))
+      fakeConsole.error = (...args: any[]) => (addRecord(<div className="isError">
+        <div className="debugPanel-indicator">
+          <span className="debugPanel-errorMark">!</span>
+        </div>
+        {consolePrint2VDom(args)}
+      </div>), console.error(...args))
+      fakeConsole.warn = (...args: any[]) => (addRecord(<div className="isWarn">
+        <div className="debugPanel-indicator">
+          <span className="debugPanel-warnMark">!</span>
+        </div>
+        {consolePrint2VDom(args)}
+      </div>), console.warn(...args))
+    }
+
+    return { addRecord, fakeConsole }
+  }, [])
+
+  const handleCommandSubmit = React.useCallback(async (code: string, fn: (...args: any[]) => Promise<any>) => {
+    addRecord(<div>
       <div className="debugPanel-indicator isGrey">&raquo;</div>
       <pre className='debugPanel-pre'><CodeSnippet code={code} /></pre>
     </div>);
     try {
       console.log("%c%s", "color:#35f", code)
       recentCodes.list.unshift(code)
-      const result = await fn();
-      if (typeof result !== 'undefined') {
-        console.log(result)
-        log(<div><MyInspector data={result} /></div>);
-      }
+      const result = await fn(fakeConsole);
+      if (typeof result !== 'undefined') fakeConsole.log(result)
     } catch (error) {
-      console.error(error)
-      log(<div className="isError">
-        <div className="debugPanel-indicator">
-          <span className="debugPanel-errorMark">!</span>
-        </div>
-        <MyInspector data={error} />
-      </div>);
+      fakeConsole.error(error)
     }
   }, []);
 
@@ -70,6 +84,12 @@ export const DebugPanel = (_props: Props) => {
 
     div.scrollTo(0, div.scrollHeight)
   }, [records.length])
+
+  React.useEffect(() => {
+    fakeConsole.log('test', window)
+    fakeConsole.error('test', window)
+    fakeConsole.warn('test', window)
+  }, [])
 
   //----------------------------------------------------------------
 
@@ -92,6 +112,7 @@ export const DebugPanel = (_props: Props) => {
       <div className="debugPanel-indicator isBlue">&raquo;</div>
       <CommandInput
         placeholder={placeholder}
+        functionArgumentList="console"
         onKeyDown={(cm, event) => {
           if (!cm.somethingSelected()) {
             let delta = 0;
@@ -117,3 +138,14 @@ export const DebugPanel = (_props: Props) => {
     </div>
   </div>;
 };
+
+const consolePrint2VDom = (args: any[]) => {
+  const result: React.ReactNode[] = []
+
+  for (const arg of args) {
+    if (typeof arg === 'string' && !result.length) result.push(<span style={{ whiteSpace: 'pre-wrap' }}>{arg}</span>);
+    else result.push(<MyInspector data={arg} key={result.length} />)
+  }
+
+  return result
+}
