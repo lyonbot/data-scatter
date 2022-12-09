@@ -1,5 +1,5 @@
 import { forEach, memoize } from "lodash";
-import { getValueType, makeEmptyLike, NodeSelector, normalizeNodeSelector } from "./utils";
+import { getValueType, isPromise, makeEmptyLike, NodeSelector, normalizeNodeSelector } from "./utils";
 import { ScatterNodeInfo } from "./ScatterNodeInfo";
 import { Nil } from "../types";
 import type { ScatterStorage } from "./storage";
@@ -11,16 +11,23 @@ export interface DumpedNodeInfo {
   refs: Record<string | number, string>;
 }
 
-export interface LoadIntoStorageOptions<LoaderMethodReturns = MaybePromise<DumpedNodeInfo | ScatterNodeInfo | Nil>> {
+type LoaderMethodReturnTypes = DumpedNodeInfo | ScatterNodeInfo | string | Nil
+
+export interface LoadIntoStorageOptions<LoaderMethodReturns = MaybePromise<LoaderMethodReturnTypes>> {
   nodes: DumpedNodeInfo[];
   storage: ScatterStorage
 
   /**
-   * if a referred nodeId doesn't exist, this will be called.
+   * if a referred nodeId doesn't exist, this will be called to load a node
    * 
    * - accepts one parameter: `nodeId: string`
-   * - returns `null`, data in dumped format, or existing object from `storage.get(...)`
    * - can be an async function, but the `loadIntoStorage` will become async too (don't forget *await*)
+   * - the return value could be
+   *   - `null`
+   *   - data in dumped format
+   *   - or existing object from `storage.get(...)`
+   *   - or a NodeInfo from `storage.getNodeInfo(...)`
+   *   - or a nodeId string that exists in the storage
    */
   loader?: (id: string) => LoaderMethodReturns
 }
@@ -62,17 +69,20 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
     let finalResult: ScatterNodeInfo | null = null
 
     const queue = [] as Parameters<BindFn>[]
-    const handleStaticRespond = (result: DumpedNodeInfo | ScatterNodeInfo | Nil) => {
-      if (!result) throw new Error('Failed to fetch missing node: ' + id)
-      result = storage.getNodeInfo(result) || result // in case `loader` returned a Proxy
-      finalResult = result instanceof ScatterNodeInfo ? result : loadSingleData(result)
+    const handleStaticRespond = (loaderReturns: LoaderMethodReturnTypes) => {
+      if (!loaderReturns) throw new Error('Failed to fetch missing node: ' + id)
+      finalResult = storage.getNodeInfo(loaderReturns)
+      if (!finalResult) {
+        if (typeof loaderReturns === 'string') throw new Error('Cannot load node: ' + loaderReturns)
+        if (!(loaderReturns instanceof ScatterNodeInfo)) finalResult = loadSingleData(loaderReturns)
+      }
 
-      if (finalResult.bus !== storage) throw new Error('Don\'t directly call use node from other storage, create a node in this storage first!')
+      if (!finalResult || finalResult.bus !== storage) throw new Error('Cannot directly use NodeInfo from another storage. Please make a clone first')
 
       queue.splice(0).forEach(([writeTo, key]) => { writeTo[key] = finalResult!.proxy })
     }
 
-    if (respond && 'then' in respond) {
+    if (isPromise(respond)) {
       pendingAsyncCount++;
       respond.then(handleStaticRespond).then(
         () => { if (--pendingAsyncCount === 0) resolve() },

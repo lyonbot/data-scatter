@@ -2,7 +2,8 @@ import { EventEmitter } from "../EventEmitter";
 import { TypeLUT, SchemaRegistry, PatchedSchema } from "../schema"
 import { Nil, KeyOf } from "../types";
 import { ScatterNodeInfo, objToInfoLUT } from "./ScatterNodeInfo";
-import { makeEmptyLike, NodeSelector, normalizeNodeSelector } from "./utils";
+import { arrayify, makeEmptyLike, NodeSelector, normalizeNodeSelector, OneOrMany, Tail } from "./utils";
+import { walk, WalkCallbackResponse, WalkOptions, WalkStepInfo } from "./walk";
 
 export interface AutoScatterEvents<T extends TypeLUT = any> {
   /**
@@ -31,6 +32,11 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
     this.options = opts
   }
 
+  /**
+   * get a created object / array
+   * 
+   * @see {@link ScatterStorage.getNodeInfo}
+   */
   get(id: string) { return this.nodes.get(id)?.proxy }
 
   /**
@@ -96,11 +102,24 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
   }
 
   /**
+   * recursively visit nodes and their children
+   * 
+   * note: if `callback` is async function, this will return a `Promise`
+   * 
+   * @param startsFrom - one or many (nodeId / NodeInfo / array or object managed by this storage)
+   */
+  walk(startsFrom: OneOrMany<string | ScatterNodeInfo | any>, callback: (info: WalkStepInfo) => Promise<WalkCallbackResponse>, opts?: WalkOptions): Promise<void>
+  walk(startsFrom: OneOrMany<string | ScatterNodeInfo | any>, callback: (info: WalkStepInfo) => WalkCallbackResponse, opts?: WalkOptions): void
+  walk(...args: any[]): any {
+    return walk(this, ...args as Tail<Parameters<typeof walk>>)
+  }
+
+  /**
    * scan nodes from some entries, then dispose all unreferenced nodes
    */
   treeshake(opts: {
-    /** can be nodeId, the object, the NodeInfo */
-    entries: Array<string | ScatterNodeInfo | any>
+    /** one or many (nodeId / NodeInfo / array or object managed by this storage) */
+    entries: OneOrMany<string | ScatterNodeInfo | any>
 
     /** during first scan, mark more nodes to retain */
     skips?: NodeSelector
@@ -108,12 +127,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
     /** called before disposing nodes. this is the last moment you can read the data */
     beforeDispose?: (nodes: ScatterNodeInfo[]) => void
   }) {
-    const scanQueue = Array.from(opts.entries, it => {
-      if (!it) return null;
-      if (typeof it === 'string') return this.nodes.get(it)
-      return this.getNodeInfo(it)
-    }).filter(Boolean) as ScatterNodeInfo[];
-
+    const scanQueue = this.getNodeInfos(opts.entries)
     const toRemove = new Set(this.nodes.values())
 
     for (let pass = 1; pass <= 2; pass++) {
@@ -149,12 +163,35 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
   }
 
   /**
-   * check if an object / array is from a node. if is, return the nodeInfo
+   * check if something belongs to this storage. If so, return the nodeInfo
+   * 
+   * @see {@link ScatterStorage.getNodeInfos} if you want to query mulitple items and keep valid NodeInfos
+   * 
+   * @param query - could be 
+   * 
+   * 1. nodeId (string)
+   * 2. object / array that created or mananged by this storage
+   * 3. NodeInfo that returned from `getNodeInfo`
    */
-  getNodeInfo<T extends object = any>(x: any): ScatterNodeInfo<T> | null {
-    const o = objToInfoLUT.get(x)
+  getNodeInfo<T extends object = any>(query: any): ScatterNodeInfo<T> | null {
+    let o: ScatterNodeInfo<T> | undefined
+    if (typeof query === 'string') o = this.nodes.get(query)
+    else if (query instanceof ScatterNodeInfo) o = query;
+    else o = objToInfoLUT.get(query)
+
     if (!o || o.bus !== this) return null
     return o
+  }
+
+  /**
+   * a multiple-to-multiple version of `getNodeInfo`
+   * 
+   * @see {@link ScatterStorage.getNodeInfo}
+   * @param queries - one or many (nodeId / NodeInfo / array or object managed by this storage)
+   * @return always an array of NodeInfo. `null` will NOT be included
+   */
+   getNodeInfos(queries: OneOrMany<string | ScatterNodeInfo | any>): ScatterNodeInfo[] {
+    return arrayify(queries).map(x => this.getNodeInfo(x)).filter(Boolean) as ScatterNodeInfo[];
   }
 
   /**

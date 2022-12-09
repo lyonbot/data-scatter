@@ -1,4 +1,4 @@
-import isObject from 'lodash/isObject';
+import { isObject } from 'lodash';
 import { PatchedSchema } from "../schema";
 import { Nil } from "../types";
 import { hasOwn, makeEmptyLike } from "./utils";

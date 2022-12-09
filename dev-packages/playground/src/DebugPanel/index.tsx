@@ -1,6 +1,5 @@
 import * as React from 'react';
-import toPath from 'lodash/toPath';
-import get from 'lodash/get';
+import { toPath, get } from 'lodash';
 import classnames from 'classnames';
 import { CommandInput } from '../CommandInput';
 import { MyInspector } from '../MyInspector';

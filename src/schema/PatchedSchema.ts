@@ -1,5 +1,4 @@
-import isNil from "lodash/isNil";
-import toPath from "lodash/toPath";
+import { isNil, toPath } from "lodash";
 import { Nil, Spread } from "../types";
 import { CommonSchemaId } from "./commonSchemas";
 import { ArraySchema, ObjectSchema, PrimitiveSchema, SchemaBase, } from "./types"

@@ -1,0 +1,31 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`walk basic walk, {"async": true}: visitedLogs 1`] = `
+[
+  "id=task1  path=["myTask"]  isVisited=0",
+  "id=array1  path=["myTask","subTasks"]  isVisited=0",
+  "id=anonymousObject1  path=["myTask","meta"]  isVisited=0",
+  "id=task1  path=["myTask","subTasks",0]  isVisited=1",
+  "id=task1  path=["myTask","meta","task"]  isVisited=2",
+]
+`;
+
+exports[`walk basic walk, {"mode": "DFS"}: visitedLogs 1`] = `
+[
+  "id=task1  path=["myTask"]  isVisited=0",
+  "id=array1  path=["myTask","subTasks"]  isVisited=0",
+  "id=task1  path=["myTask","subTasks",0]  isVisited=1",
+  "id=anonymousObject1  path=["myTask","meta"]  isVisited=0",
+  "id=task1  path=["myTask","meta","task"]  isVisited=2",
+]
+`;
+
+exports[`walk basic walk, {}: visitedLogs 1`] = `
+[
+  "id=task1  path=["myTask"]  isVisited=0",
+  "id=array1  path=["myTask","subTasks"]  isVisited=0",
+  "id=anonymousObject1  path=["myTask","meta"]  isVisited=0",
+  "id=task1  path=["myTask","subTasks",0]  isVisited=1",
+  "id=task1  path=["myTask","meta","task"]  isVisited=2",
+]
+`;
