@@ -1,5 +1,5 @@
-import { dumpNodesFromStorage, loadIntoStorage, ScatterStorage } from '../../src/scatter'
-import { getSchemaRegistry } from './fixture'
+import { dumpNodesFromStorage, loadIntoStorage, ScatterStorage } from '../src/scatter'
+import { getSchemaRegistry, sampleDumpedData1 } from './fixture'
 
 describe('loadDump', () => {
   test('dump and load to another storage', () => {
@@ -74,36 +74,8 @@ describe('loadDump', () => {
 
     const res = loadIntoStorage({
       storage,
-      nodes: [{
-        nodeId: 'task1',
-        schemaId: 'task',
-        value: { executor: 'lyonbot' },
-        refs: { subTasks: 'array1', meta: 'anonymousObject1' }
-      }, {
-        nodeId: 'array1',
-        schemaId: 'task/properties/subTasks',
-        refs: { '0': 'task1' },
-        value: [null]
-      }, {
-        nodeId: 'anonymousObject1',
-        schemaId: '',
-        value: { hello: 'world' },
-        refs: { task: 'task1' }
-      }]
+      nodes: sampleDumpedData1
     })
-
-    /**
-     *            task1 = {
-     *                  |   executor: 'lyonbot',
-     *           array1 |   subTasks: [
-     *                * |     >>task1
-     *                  |   ],
-     * anonymousObject1 |   meta: {
-     *                  |     hello: 'world',
-     *                * |     task: >>task1
-     *                  |   }
-     *                  | }
-     */
 
     expect(res.loaded).toHaveLength(3)
     expect(res.loaded).toContain(storage.getNodeInfo(task1))
@@ -116,7 +88,7 @@ describe('loadDump', () => {
         hello: 'world',
         task: task1 // anonymous object is referencing task1
       },
-      subTasks: [task1] // subTasks is a self-looped array
+      subTasks: [task1, null] // subTasks is a self-looped array
     })
   })
 

@@ -1,4 +1,4 @@
 export * from './schema'
 export * from './scatter'
 export * from './types'
-export { EventEmitter } from './EventEmitter'
+export { EventEmitter, combineFunctions } from './EventEmitter'

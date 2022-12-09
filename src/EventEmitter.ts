@@ -1,6 +1,8 @@
 type Fn = (...args: any[]) => any
 type FnEx = Fn & { raw: Fn }
 
+type Params<T> = T extends (...args: infer R) => any ? R : any[]
+
 // if there is only few listeners, invoking inside a for-loop is slow
 const makeInvokerForSome = (f1: Fn, f2: Fn, f3: Fn | undefined, f4: Fn | undefined, f5: Fn | undefined): Fn => (...args: any[]) => {
   f1(...args)
@@ -14,8 +16,9 @@ const makeInvokerForMany = (arr: Fn[], len: number): Fn => (...args: any[]) => {
   for (let i = 0; i < len; i++) arr[i](...args)
 }
 
-const makeInvoker = (arr: Fn[]): Fn => {
+export const combineFunctions = (arr: Fn[]): Fn => {
   const arrLen = arr.length
+  if (arrLen === 0) return () => void 0
   if (arrLen === 1) return arr[0]
   if (arrLen <= 5) return makeInvokerForSome(...arr as Parameters<typeof makeInvokerForSome>)
   return makeInvokerForMany(arr, arrLen)
@@ -43,24 +46,24 @@ export class EventEmitter<T>{
    * @param once - Whether the listener should be removed after being called once.
    * @returns A function to remove this listener, which is equivalent to calling `off(event, listener)`.
    */
-  on<K extends keyof T>(event: K, listener: T[K] & Fn, once?: boolean) {
+  on<K extends keyof T>(event: K, listener: T[K], once?: boolean) {
     let list = this._listeners[event];
 
-    const bounded = listener.bind(this)
+    const bounded = (listener as Fn).bind(this)
     const fnEx = (once ? (...args: any[]) => { this.off(event, listener); bounded(...args) } : bounded) as FnEx
-    fnEx.raw = listener;
+    fnEx.raw = listener as Fn;
 
     if (!list) list = this._listeners[event] = [fnEx];
     else list.push(fnEx);
 
-    this._listenerInvokers[event] = makeInvoker(list)
+    this._listenerInvokers[event] = combineFunctions(list)
     return () => this.off(event, listener)
   }
 
   /**
    * remove a event listener
    */
-  off<K extends keyof T>(event: K, listener: T[K] & Fn) {
+  off<K extends keyof T>(event: K, listener: T[K]) {
     const prev = this._listeners[event];
     if (!prev) return;
 
@@ -68,7 +71,7 @@ export class EventEmitter<T>{
 
     if (newArr.length) {
       this._listeners[event] = newArr
-      this._listenerInvokers[event] = makeInvoker(newArr)
+      this._listenerInvokers[event] = combineFunctions(newArr)
     } else {
       delete this._listeners[event]
       delete this._listenerInvokers[event]
@@ -82,15 +85,19 @@ export class EventEmitter<T>{
    * @param listener - The listener function to attach.
    * @returns A function to remove this listener, which is equivalent to calling `off(event, listener)`.
    */
-  once<K extends keyof T>(event: K, listener: T[K] & Fn) {
+  once<K extends keyof T>(event: K, listener: T[K]) {
     return this.on(event, listener, true)
   }
 
   /**
    * emit a event
    */
-  emit<K extends keyof T>(event: K, ...args: Parameters<T[K] & Fn>) {
+  emit<K extends keyof T>(event: K, ...args: Params<T[K]>) {
     const invoke = this._listenerInvokers[event];
     if (invoke) invoke(...args)
+  }
+
+  hasListeners<K extends keyof T>(event: K) {
+    return !!this._listenerInvokers[event]
   }
 }

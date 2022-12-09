@@ -3,16 +3,27 @@
 ## How To Use
 
 1. [Create a **SchemaRegistry**](#SchemaRegistry), define types and relations.
+
 2. [Create a **ScatterStorage**](#ScatterStorage) with the SchemaRegistry.
-3. Call `storage.create('schemaId')` and get an empty object / array to mutate.
-4. Manipulate the object / array as you like. ScatterStorage will create sub-nodes automatically when needed.
+
+3. Call `storage.create('schemaId')` and get an empty object / array to manipulate.
+
+4. Manipulate the object / array in arbitrary ways you like.
+
+   - ScatterStorage will automatically create and manage nodes. Feel free to `data.xxx = {...}`
+   - meanwhile, you can use [**NodeContentObserver**](#NodeContentObserver) to collect dependencies and edits.
+
 5. [Load and Dump Nodes](#Load-and-Dump-Nodes), (de)serialize all nodes and references
+
+<br />
 
 ## SchemaRegistry
 
-Use `createSchemaRegistry` to make schemas cross-referencing!
+Use `createSchemaRegistry` to define Schemas.
 
-- **Define Schemas, with Cross-Referencing**: easy way to define flexible schemas
+The schemas can do Cross-Referencing and be Self-Contained (like `father` of _person_ is still a _person_):
+
+More details can be found in [Appendix](#appendix), including [How to Write Schema Definitions](#how-to-write-schema-definitions) and [Mastering the SchemaRegistry API](#Mastering-the-SchemaRegistry-API)
 
 ```js
 const registry = createSchemaRegistry({
@@ -47,35 +58,6 @@ const registry = createSchemaRegistry({
     },
   },
 });
-```
-
-- **Access Schema Registry**: now, you can easily get schema of any properties, in any depth!
-
-```js
-const $entrepreneur = registry.get('entrepreneur');
-const $person = registry.get('person');
-
-assert($entrepreneur.isObject());
-expect($entrepreneur.title).toBe('A person with goals!'); // <- read extra notes
-
-// query via data path - from a schema
-expect($person.getSchemaAtPath('children[0].father')).toBe($person);
-expect($person.getSchemaAtPath('children[0].employer')).toBe($entrepreneur);
-
-// (not recommended) query via schema path - from registry
-const $alsoPerson = registry.get('person/properties/father');
-expect($alsoPerson).toBe($person);
-```
-
-- **Immutable**: you can't modify a registry, but you can create a new one based on it.
-
-- **Combining Registries**: call `reg1.extend(reg2)` and you will get the larger registry. All existing schemas will not be affected.
-
-- **Works with TypeScript**: no more duplicated declaration! write schema once, get TypeScript type immediately.
-
-```ts
-type Person = FromSchemaRegistry<typeof registry, 'person'>;
-type Entrepreneur = FromSchemaRegistry<typeof registry, 'entrepreneur'>;
 ```
 
 <br/>
@@ -144,7 +126,6 @@ Returns `{ loaded, updated, renamed }` when loaded.
 
 - `renamed`: Array of `{ nodeInfo, oldId }`
 
-
 ### `dumpNodesFromStorage({ storage, nodes, skips? })`
 
 Export nodes from storage into dumped format
@@ -158,7 +139,6 @@ Returns `{ output, skippedNodes }`
 - `output`: array in the dumped format
 
 - `skippedNodes`: NodeInfo list, these nodes are not dumped
-
 
 ### Dumped Format
 
@@ -181,8 +161,156 @@ Returns `{ output, skippedNodes }`
 
 <br/>
 
+## NodeContentObserver
 
-## Tricks
+a NodeContentObserver can:
+
+1. create a Watcher and collect all "read" access as the watcher's dependencies
+2. start watch the whole storage, gather mutations
+
+With the observer, you can:
+
+- Make things reactive like _Vue reactive_ and _Mobx_
+- Implement undo / redo feature
+- Make collative editing possible
+
+### Collect Edits
+
+This helps you find out what is changed and edited in _the whole ScatterStorage_
+
+1. `startGatherMutation()` -- start collecting all write access, including `set` and `delete`
+
+2. if things changed, the `"mutated"` event will be triggered
+
+   - you can also use `hasMutationGathered()` to check whether things changed
+
+3. you can gather all mutations with `stopGatherMutation()`, meanwhile the progress will be stopped
+
+```js
+const observer = new NodeContentObserver(storage); // observer is reusable
+
+observer.startGatherMutation();
+observer.on('mutationCollected', () => {
+  const changes = observer.stopGatherMutation();
+  console.log(changes); // can be null if value not changed
+});
+
+// ... edit data of storage
+task1.name = 'aaaaa';
+task1.tags.push('Shopping');
+```
+
+In the result, all the intermediate values will be discarded -- you can only get the newest and oldest values between `startGatherMutation()` and `stopGatherMutation()`
+
+The result is a `null` or `Map<NodeInfo, Map<string | number, NodeWriteAccessAction>>`
+
+```js
+if (!changes) {
+  console.log('nothing changed');
+  return;
+}
+
+changes.forEach((content, node) => {
+  console.log(`node "${node.id}" is changed`);
+  content.forEach((action, key) => {
+    // actions: { isDeleted, oldValue, newValue, oldRef, newRef }
+    if (action.isDeleted) {
+      console.log(` - ${key}: deleted`);
+    } else if (action.newRef) {
+      console.log(` - ${key}: link to node "${action.newRef.id}"`);
+    } else {
+      console.log(` - ${key}: set value`, action.newValue);
+    }
+  });
+});
+```
+
+### Collect Dependencies
+
+Like Vue and Mobx, you can:
+
+1. `startCollectDep` -- start to collect and record "read accesses" as dependencies
+2. do some computing, rendering, etc.
+3. `stopCollectDep` -- stop collecting and get a **Watcher** -- with dependency infos inside
+4. Use watcher's `startWatch(callback)` and `stopWatch()` to react when things change
+
+```js
+const observer = new NodeContentObserver(storage); // observer is reusable
+
+const watcher = observer.startCollectDep();
+
+// ... access data of storage
+// ... and all read access will be collected as watcher's dep
+
+observer.stopCollectDep();
+
+// now we get the watcher
+
+watcher.startWatch(() => {
+  watcher.stopWatch();
+
+  console.log('changed!');
+});
+```
+
+Note that it's a violation to mutate data inside `callback` because it may cause Infinite-loop!
+
+The `startWatch(...)` accepts optional 2nd parameter -- a `callbackForDeadLoop`. When the violation is detected, it will be invoked rather than `callback`
+
+<br/>
+
+<span style="font-size: 3em">📚</span>
+
+## Appendix
+
+### Mastering the SchemaRegistry API
+
+#### 🏗️ Make Registry Bigger
+
+A SchemaRegistry is **immutable** -- you can't modify a registry, but you can use `reg1.extend(reg2)` to get an extended registry. All existing schemas will not be affected.
+
+If you already have a `schemaRegistry`, and there is a `user` schema inside, and you **want to add a property**,
+then you can do it like this:
+
+```ts
+const newSchemaRegistry = schemaRegistry.extend({
+  user: {
+    type: 'object',
+    extends: [schemaRegistry.get('user')], // <- extends from old `user` schema, from old registry
+    properties: {
+      newProp: { ... },
+    },
+  },
+})
+```
+
+Beware that if the old `user` schema is already referenced by others, the old references will NOT be affected!
+
+#### 👌 Get Schemas
+
+You can easily get schema of any properties, in any depth!
+
+- `registry.get('schemaId')`
+
+It will return a [**PatchedSchema**](#what-is-patchedschema), which have the same content as your declarations, plus useful extra APIs (eg. `isObject()` and `getSchemaAtPath('...')` below)
+
+```js
+const $entrepreneur = registry.get('entrepreneur');
+const $person = registry.get('person');
+
+assert($entrepreneur.isObject());
+expect($entrepreneur.title).toBe('A person with goals!'); // <- read info from a schema
+
+// query via data path - from a schema
+expect($person.getSchemaAtPath('children[0].father')).toBe($person);
+expect($person.getSchemaAtPath('children[0].employer')).toBe($entrepreneur);
+
+// (not recommended) query via schema path - from registry
+const $alsoPerson = registry.get('person/properties/father');
+expect($alsoPerson).toBe($person);
+```
+
+<br/>
 
 ### How to Write Schema Definitions
 
@@ -227,15 +355,17 @@ const arraySampleSchema = {
 };
 ```
 
+<br/>
+
 ### What is PatchedSchema
 
-In DevTool Console, the type of `registry.get('...')` is displayed as ***PatchedSchema***.
+In DevTool Console, the type of `registry.get('...')` is displayed as **_PatchedSchema_**.
 
-A *PatchedSchema* object:
+A _PatchedSchema_ object:
 
 - its content is the same as the corresponding raw schema declaration
 
-- all (nested) schemas declaraions and references, are normalized to *PatchedSchema*
+- all (nested) schemas declaraions and references, are normalized to _PatchedSchema_
 
   - `extends`
   - `items` of array schema
@@ -248,6 +378,7 @@ A *PatchedSchema* object:
   - `$schemaId: string`
 
     the shortest schema name, like `"task"`, or `"task/items"` if is anonymous schema
+
   - `isObject(): boolean`
   - `isArray(): boolean`
   - `getSchemaAtPath(dataPath: string | number | string[]): PatchedSchema | null`
@@ -257,38 +388,28 @@ A *PatchedSchema* object:
     the `dataPath` could be `"propertyName"`, `123`, `"author.email"` or `["author", "email"]`
 
   - `isExtendedFrom(otherSchema: PatchedSchema): boolean`
-  
-     recursively check if the schema is extended form `otherSchema`
-     
-     caveats:
-     
-     - returns **true** if `this === otherSchema`
-     - returns **false** if `otherSchema` is null
 
-To check if an object is *PatchedSchema*, call `isPatchedSchema(obj)`
+    recursively check if the schema is extended form `otherSchema`
 
-### Extend an existing Schema
+    caveats:
 
-If you already have a `schemaRegistry`, and there is a `user` schema inside, and you **want to add a property**,
-then you can do it like this:
+    - returns **true** if `this === otherSchema`
+    - returns **false** if `otherSchema` is null
+
+To check if an object is _PatchedSchema_, call `isPatchedSchema(obj)`
+
+<br/>
+
+## Works with TypeScript
+
+1. You can get the TypeScript types directly from a `registry`
 
 ```ts
-const newSchemaRegistry = schemaRegistry.extend({
-  user: {
-    type: 'object',
-    extends: [schemaRegistry.get('user')], // <- extends from old `user` schema, from old registry
-    properties: {
-      newProp: { ... },
-    },
-  },
-})
+type Person = FromSchemaRegistry<typeof registry, 'person'>;
+type Entrepreneur = FromSchemaRegistry<typeof registry, 'entrepreneur'>;
 ```
 
-### Check Schema Definitions in TypeScript
-
-If you need, you can define custom fields for schemas.
-
-Add this to your file, then all schema declarations will be affected.
+2. Want some custom fields in schema declarations? Add this to your file, then all schema declarations will be affected and checked by TypeScript
 
 ```ts
 declare module 'data-scatter' {

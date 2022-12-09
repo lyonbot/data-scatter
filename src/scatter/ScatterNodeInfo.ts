@@ -1,8 +1,8 @@
 import { isObject } from 'lodash';
 import { PatchedSchema } from "../schema";
 import { Nil } from "../types";
-import { hasOwn, makeEmptyLike } from "./utils";
-import { ScatterStorage } from "./storage";
+import { isCollectingDep, hasOwn, makeEmptyLike, specialAccessKey } from "./utils";
+import { NodeWriteAccessAction, ScatterStorage } from "./storage";
 
 export const objToInfoLUT = new WeakMap<any, ScatterNodeInfo>()
 
@@ -12,6 +12,9 @@ const proxyHandler: ProxyHandler<any> = {
     if (!hasOwn(target, key)) self = void 0
     if (self && self.isArray && key === 'length') self = void 0   // for array, the "refs" container also has "length"
 
+    // read access hook
+    if (isCollectingDep() && self && self.bus) self.bus.emit('nodeReadAccess', self, key)
+
     if (!self || !self.refsCount || typeof key === 'symbol') return Reflect.get(target, key, recv)
 
     const rTo = self.refs![key]
@@ -20,12 +23,38 @@ const proxyHandler: ProxyHandler<any> = {
   set(target, key, value) {
     const self = objToInfoLUT.get(target)!
 
+    const hasWriteAccessHook = self.bus?.hasListeners('nodeWriteAccess')
+    const oldValue = hasWriteAccessHook && self.container[key]
+
     // setting array.length, something will be discarded!
     if (self.isArray && key === 'length') {
-      if (self.refs) Object.keys(self.refs).forEach(k => {
-        if (+k >= value) self._setRef(k, null);
-      })
-      return Reflect.set(target, key, value)
+      // write access hook
+      let writeAccessHookQueue: [key: keyof any, action: NodeWriteAccessAction][]
+      if (hasWriteAccessHook) {
+        writeAccessHookQueue = []
+
+        // (for deleted array items)
+        for (let i = Math.max(value, 0); i < oldValue; i++) {
+          writeAccessHookQueue.push([i, {
+            isDeleted: true,
+            oldRef: self.refs?.[i],
+            oldValue: self.container[i]
+          }])
+        }
+
+        // (for length)
+        writeAccessHookQueue.push([key, { oldValue, newValue: value }])
+      }
+
+      if (self.refs) {
+        Object.keys(self.refs).forEach(k => {
+          if (+k >= value) self._setRef(k, null);
+        })
+      }
+
+      const finalResp = Reflect.set(target, key, value)
+      if (hasWriteAccessHook) for (const args of writeAccessHookQueue!) self.bus!.emit('nodeWriteAccess', self, ...args)
+      return finalResp
     }
 
     const propSchema = self?.schema?.getDirectChildSchema(key)
@@ -44,37 +73,80 @@ const proxyHandler: ProxyHandler<any> = {
     //
     // note: in any case, the old ref on this property key, must be removed, if presents.
 
-    let valueInfo: ScatterNodeInfo<any> | undefined
+    let newRef: ScatterNodeInfo<any> | undefined
 
     // case 1 checking
     if (
-      (valueInfo = objToInfoLUT.get(value)) &&
-      valueInfo.bus === self.bus &&
+      (newRef = objToInfoLUT.get(value)) &&
+      newRef.bus === self.bus &&
       (!propSchema /* current property not defined */ || (
         /* or the incoming node's schema suits this property */
         !self.bus?.options.disallowSubTypeAssign
-          ? valueInfo.schema?.isExtendedFrom(propSchema) // Dog can be stored in Animal field
-          : valueInfo.schema === propSchema // treat as different types (default)
+          ? newRef.schema?.isExtendedFrom(propSchema) // Dog can be stored in Animal field
+          : newRef.schema === propSchema // treat as different types (default)
       ))
     ) {
       // case 1, pass
     } else if (isObject(value)) {
       // case 2, make a new node and clone data into it
-      valueInfo = new ScatterNodeInfo(self.bus, makeEmptyLike(value), propSchema)
-      Object.assign(valueInfo.proxy, value)
+      newRef = new ScatterNodeInfo(self.bus, makeEmptyLike(value), propSchema)
+      Object.assign(newRef.proxy, value)
     } else {
       // case 3, no new node
-      valueInfo = void 0;
+      newRef = void 0;
     }
 
-    self._setRef(key, valueInfo)
-    return Reflect.set(target, key, valueInfo ? valueInfo.proxy : value)
+    const newValue = newRef ? newRef.proxy : value
+    const oldRef = self._setRef(key, newRef)
+
+    const finalResp = Reflect.set(target, key, newValue)
+
+    if (hasWriteAccessHook) {
+      self.bus!.emit('nodeWriteAccess', self, key, {
+        oldRef,
+        newRef,
+        oldValue,
+        newValue,
+      })
+    }
+
+    return finalResp
   },
   deleteProperty(target, key) {
     const self = objToInfoLUT.get(target)
 
-    if (self) self._setRef(key, null)
-    return Reflect.deleteProperty(target, key)
+    let emitWriteAction: NodeWriteAccessAction | undefined
+    if (self) {
+      const hasWriteAccessHook = self.bus?.hasListeners('nodeWriteAccess')
+      const oldValue = hasWriteAccessHook && self.container[key]
+      const oldRef = self._setRef(key, null)
+
+      if (hasWriteAccessHook) {
+        emitWriteAction = {
+          isDeleted: true,
+          oldValue,
+          oldRef,
+        }
+      }
+    }
+
+    const finalResp = Reflect.deleteProperty(target, key)
+    if (emitWriteAction) self!.bus!.emit('nodeWriteAccess', self!, key, emitWriteAction);
+    return finalResp
+  },
+  has(target, key) {
+    // read access hook
+    const self = isCollectingDep() && objToInfoLUT.get(target)
+    if (self && self.bus) self.bus.emit('nodeReadAccess', self, key)
+
+    return Reflect.has(target, key)
+  },
+  ownKeys(target) {
+    // read access hook
+    const self = isCollectingDep() && objToInfoLUT.get(target)
+    if (self && self.bus) self.bus.emit('nodeReadAccess', self, specialAccessKey.ownKeys)
+
+    return Reflect.ownKeys(target)
   },
 }
 
@@ -106,7 +178,7 @@ export class ScatterNodeInfo<T extends object = any> {
 
     if (bus) {
       bus.orphanNodes.add(this)
-      bus.emit('nodeCreated', bus, this)
+      bus.emit('nodeCreated', this)
     }
   }
 
@@ -132,8 +204,12 @@ export class ScatterNodeInfo<T extends object = any> {
     this._id = id
   }
 
-  /** add / replace / delete a ref to other node */
-  _setRef(k: keyof T, to: ScatterNodeInfo | Nil) {
+  /** 
+   * add / replace / delete a ref to other node
+   * 
+   * @returns oldRef
+   */
+  _setRef(k: keyof T, to: ScatterNodeInfo | Nil): ScatterNodeInfo | undefined {
     const lastRef = this.refsCount && this.refs?.[k]
     if (lastRef) {
       delete this.refs![k]
@@ -149,6 +225,8 @@ export class ScatterNodeInfo<T extends object = any> {
       this.refs![k] = to
       to._addReferredCount()
     }
+
+    return lastRef || void 0
   }
 
   _addReferredCount() {
@@ -169,7 +247,7 @@ export class ScatterNodeInfo<T extends object = any> {
     const bus = this.bus
     if (bus) {
       bus.orphanNodes.add(this)
-      bus.emit('nodeLostLastReferrer', bus, this)
+      bus.emit('nodeLostLastReferrer', this)
     }
   }
 

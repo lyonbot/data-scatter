@@ -1,4 +1,4 @@
-import { ScatterNodeInfo, ScatterStorage } from '../../src/scatter'
+import { ScatterNodeInfo, ScatterStorage } from '../src/scatter'
 import { getSchemaRegistry, Task } from './fixture'
 
 describe('ScatterStorage', () => {
@@ -9,8 +9,8 @@ describe('ScatterStorage', () => {
 
     const nodes = [] as ScatterNodeInfo[]
 
-    const $nodeCreated = jest.fn((x, nodeInfo: ScatterNodeInfo) => { nodes.push(nodeInfo) });
-    const $nodeLostLastReferrer = jest.fn((x, nodeInfo: ScatterNodeInfo) => nodeInfo);
+    const $nodeCreated = jest.fn((nodeInfo: ScatterNodeInfo) => { nodes.push(nodeInfo) });
+    const $nodeLostLastReferrer = jest.fn((nodeInfo: ScatterNodeInfo) => nodeInfo);
     storage.on('nodeCreated', $nodeCreated)
     storage.on('nodeLostLastReferrer', $nodeLostLastReferrer)
 

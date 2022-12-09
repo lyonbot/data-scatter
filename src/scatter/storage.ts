@@ -5,18 +5,30 @@ import { ScatterNodeInfo, objToInfoLUT } from "./ScatterNodeInfo";
 import { arrayify, makeEmptyLike, NodeSelector, normalizeNodeSelector, OneOrMany, Tail } from "./utils";
 import { walk, WalkCallbackResponse, WalkOptions, WalkStepInfo } from "./walk";
 
+export type NodeWriteAccessAction = {
+  isDeleted?: boolean;
+  oldRef?: ScatterNodeInfo;
+  newRef?: ScatterNodeInfo;
+  oldValue?: any;
+  newValue?: any;
+};
+
 export interface AutoScatterEvents<T extends TypeLUT = any> {
   /**
    * fired when a node is created, before filling content
    */
-  nodeCreated(storage: ScatterStorage<T>, nodeInfo: ScatterNodeInfo): void
+  nodeCreated(nodeInfo: ScatterNodeInfo): void
 
   /** 
    * fired when a node lost last reference from others.
    * 
    * note: maybe someone will make new references laster, therefore, DO NOT DELETE THIS NODE IMMEDIATELY!
    */
-  nodeLostLastReferrer(storage: ScatterStorage<T>, nodeInfo: ScatterNodeInfo): void
+  nodeLostLastReferrer(nodeInfo: ScatterNodeInfo): void
+
+  nodeReadAccess(nodeInfo: ScatterNodeInfo, key: keyof any): void
+
+  nodeWriteAccess(nodeInfo: ScatterNodeInfo, key: keyof any, action: NodeWriteAccessAction): void
 }
 
 export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEmitter<AutoScatterEvents<SchemaTypeLUT>> {
@@ -35,7 +47,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
   /**
    * get a created object / array
    * 
-   * @see {@link ScatterStorage.getNodeInfo}
+   * @see {@link ScatterStorage#getNodeInfo}
    */
   get(id: string) { return this.nodes.get(id)?.proxy }
 
@@ -165,7 +177,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
   /**
    * check if something belongs to this storage. If so, return the nodeInfo
    * 
-   * @see {@link ScatterStorage.getNodeInfos} if you want to query mulitple items and keep valid NodeInfos
+   * @see {@link ScatterStorage#getNodeInfos} if you want to query mulitple items and keep valid NodeInfos
    * 
    * @param query - could be 
    * 
@@ -186,11 +198,11 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
   /**
    * a multiple-to-multiple version of `getNodeInfo`
    * 
-   * @see {@link ScatterStorage.getNodeInfo}
+   * @see {@link ScatterStorage#getNodeInfo}
    * @param queries - one or many (nodeId / NodeInfo / array or object managed by this storage)
    * @return always an array of NodeInfo. `null` will NOT be included
    */
-   getNodeInfos(queries: OneOrMany<string | ScatterNodeInfo | any>): ScatterNodeInfo[] {
+  getNodeInfos(queries: OneOrMany<string | ScatterNodeInfo | any>): ScatterNodeInfo[] {
     return arrayify(queries).map(x => this.getNodeInfo(x)).filter(Boolean) as ScatterNodeInfo[];
   }
 

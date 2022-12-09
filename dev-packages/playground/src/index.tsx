@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage, loadIntoStorage, dumpOneNode, dumpNodesFromStorage } from 'data-scatter'
+import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage, loadIntoStorage, dumpOneNode, dumpNodesFromStorage, NodeContentObserver, Watcher } from 'data-scatter'
 import { DebugPanel } from './DebugPanel';
 import { MyInspector } from './MyInspector';
 
@@ -86,6 +86,8 @@ const global = {
   loadIntoStorage,
   dumpOneNode,
   dumpNodesFromStorage,
+  NodeContentObserver,
+  Watcher,
 }
 Object.assign(window, global)
 

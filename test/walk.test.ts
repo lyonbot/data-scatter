@@ -1,40 +1,7 @@
-import { DumpedNodeInfo, loadIntoStorage, ScatterStorage, WalkCallbackResponse, WalkOptions, WalkStepInfo } from '../../src/scatter'
-import { getSchemaRegistry } from './fixture'
+import { loadIntoStorage, ScatterStorage, WalkCallbackResponse, WalkOptions, WalkStepInfo } from '../src/scatter'
+import { getSchemaRegistry, sampleDumpedData1 } from './fixture'
 
 describe('walk', () => {
-  /**
-   *            task1 = {
-   *                  |   executor: 'lyonbot',
-   *           array1 |   subTasks: [
-   *                * |     *task1,
-   *                  |     null
-   *                  |   ],
-   * anonymousObject1 |   meta: {
-   *                  |     hello: 'world',
-   *                * |     task: *task1
-   *                  |   }
-   *                  | }
-   */
-  const dumpedData: DumpedNodeInfo[] = [
-    {
-      nodeId: 'task1',
-      schemaId: 'task',
-      value: { executor: 'lyonbot' },
-      refs: { subTasks: 'array1', meta: 'anonymousObject1' }
-    },
-    {
-      nodeId: 'array1',
-      schemaId: 'task/properties/subTasks',
-      refs: { '0': 'task1' },
-      value: [null, null]
-    },
-    {
-      nodeId: 'anonymousObject1',
-      schemaId: '',
-      value: { hello: 'world' },
-      refs: { task: 'task1' }
-    }
-  ];
   const visitedLogs: any[] = [];
   const writeLog = (step: WalkStepInfo) => visitedLogs.push(`id=${step.nodeId}  path=${JSON.stringify(step.path)}  isVisited=${step.isVisited}`)
 
@@ -50,7 +17,7 @@ describe('walk', () => {
     const storage = new ScatterStorage({ schemaRegistry: getSchemaRegistry() });
     loadIntoStorage({
       storage,
-      nodes: dumpedData
+      nodes: sampleDumpedData1
     })
 
     const task1VisitedLog: WalkStepInfo[] = []
@@ -83,7 +50,7 @@ describe('walk', () => {
     const storage = new ScatterStorage({ schemaRegistry: getSchemaRegistry() });
     loadIntoStorage({
       storage,
-      nodes: dumpedData
+      nodes: sampleDumpedData1
     })
 
     const visitor = jest.fn((step: WalkStepInfo): WalkCallbackResponse => {
@@ -107,7 +74,7 @@ describe('walk', () => {
     const storage = new ScatterStorage({ schemaRegistry: getSchemaRegistry() });
     loadIntoStorage({
       storage,
-      nodes: dumpedData
+      nodes: sampleDumpedData1
     })
 
     const fn = (step: WalkStepInfo) => {

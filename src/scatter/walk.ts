@@ -3,7 +3,7 @@ import { PatchedSchema } from "../schema"
 import { Nil } from "../types"
 import { ScatterNodeInfo } from "./ScatterNodeInfo"
 import { ScatterStorage } from "./storage"
-import { OneOrMany, isPromise, arrayify } from "./utils"
+import { OneOrMany, isPromise } from "./utils"
 
 export interface WalkOptions {
   /**  */
@@ -20,7 +20,7 @@ type PropertyNameOrFilterFunction =
   | ((key: string | number, subNodeInfo: ScatterNodeInfo, parentNodeInfo: ScatterNodeInfo) => boolean)
 
 /** 
- * what shall the visitor function return, durining `walk`
+ * what shall the visitor function return, during `walk`
  */
 export type WalkCallbackResponse =
   | void
@@ -32,7 +32,7 @@ export type WalkCallbackResponse =
   }
 
 /** 
- * durining `walk`, the visitor function will receive this
+ * during `walk`, the visitor function will receive this
  * 
  * do not forget checking `isVisited`
  */
@@ -40,7 +40,7 @@ export interface WalkStepInfo {
   /** current storage context */
   storage: ScatterStorage
 
-  /** the proxied value, equivalent to `nodeInfo.proxy` */
+  /** use this to access value and referenced nodes' value, equivalent to `nodeInfo.proxy` */
   value: any;
 
   /** all info about this value */

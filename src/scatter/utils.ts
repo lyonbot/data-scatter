@@ -1,6 +1,21 @@
 import { Nil } from "../types";
 import type { ScatterNodeInfo } from "./ScatterNodeInfo";
 
+export const specialAccessKey = {
+  ownKeys: Symbol('ownKeys'),
+} as const
+
+export type SpecialAccessKey = typeof specialAccessKey[keyof typeof specialAccessKey]
+
+// ----------------------------------------------------------------
+
+let aliveObserverCount = 0;
+export const addDepCollectCounter = () => aliveObserverCount++;
+export const minusDepCollectCounter = () => aliveObserverCount--;
+export const isCollectingDep = () => aliveObserverCount;
+
+// ----------------------------------------------------------------
+
 export const makeEmptyLike = (x: any) => {
   if (Array.isArray(x))
     return [];
