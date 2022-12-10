@@ -8,10 +8,10 @@
   "private": true,
   "license": "MIT",
   "dependencies": {
-    "esbuild": "^0.15.15",
+    "esbuild": "^0.15.18",
     "fs-extra": "^10.1.0"
   },
   "devDependencies": {
-    "eslint-config-custom": "workspace:*"
+    "eslint-config-custom": "workspace:0.0.0"
   }
 }

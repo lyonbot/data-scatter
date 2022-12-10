@@ -5,10 +5,10 @@
   "private": true,
   "license": "MIT",
   "dependencies": {
-    "eslint-plugin-react": "^7.31.8",
-    "@typescript-eslint/eslint-plugin": "^5.44.0",
-    "@typescript-eslint/parser": "^5.44.0",
+    "@typescript-eslint/eslint-plugin": "^5.46.0",
+    "@typescript-eslint/parser": "^5.46.0",
     "eslint": "^7.32.0",
-    "typescript": "^4.9.3"
+    "eslint-plugin-react": "^7.31.11",
+    "typescript": "^4.9.4"
   }
 }
