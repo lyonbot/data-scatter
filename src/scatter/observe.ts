@@ -1,5 +1,5 @@
 import { combineFunctions, EventEmitter } from "../EventEmitter";
-import { ScatterNodeInfo } from "./ScatterNodeInfo";
+import { NodeInfo } from "./NodeInfo";
 import { NodeWriteAccessAction, ScatterStorage } from "./storage";
 import { addDepCollectCounter, minusDepCollectCounter, specialAccessKey, SpecialAccessKey } from "./utils";
 
@@ -82,7 +82,7 @@ export class NodeContentObserver extends EventEmitter<NodeContentObserverEvents>
     return prev
   }
 
-  private _isCollectingMutation?: Map<ScatterNodeInfo, Map<string | number, NodeWriteAccessAction>>
+  private _isCollectingMutation?: Map<NodeInfo, Map<string | number, NodeWriteAccessAction>>
   private _removeMutationListeners?: () => void
 
   /** 
@@ -198,14 +198,14 @@ export class NodeContentObserver extends EventEmitter<NodeContentObserverEvents>
  */
 export class Watcher {
   storage: ScatterStorage
-  deps: Map<ScatterNodeInfo, Set<string | number | SpecialAccessKey>>
+  deps: Map<NodeInfo, Set<string | number | SpecialAccessKey>>
 
   constructor(storage: ScatterStorage) {
     this.storage = storage
     this.deps = new Map()
   }
 
-  addDep(node: ScatterNodeInfo, key: keyof any) {
+  addDep(node: NodeInfo, key: keyof any) {
     let set = this.deps.get(node)
     if (!set) this.deps.set(node, set = new Set())
     set.add(key)

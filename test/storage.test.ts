@@ -1,4 +1,4 @@
-import { ScatterNodeInfo, ScatterStorage } from '../src/scatter'
+import { NodeInfo, ScatterStorage } from '../src/scatter'
 import { getSchemaRegistry, Task } from './fixture'
 
 describe('ScatterStorage', () => {
@@ -7,10 +7,10 @@ describe('ScatterStorage', () => {
       schemaRegistry: getSchemaRegistry(),
     });
 
-    const nodes = [] as ScatterNodeInfo[]
+    const nodes = [] as NodeInfo[]
 
-    const $nodeCreated = jest.fn((nodeInfo: ScatterNodeInfo) => { nodes.push(nodeInfo) });
-    const $nodeLostLastReferrer = jest.fn((nodeInfo: ScatterNodeInfo) => nodeInfo);
+    const $nodeCreated = jest.fn((nodeInfo: NodeInfo) => { nodes.push(nodeInfo) });
+    const $nodeLostLastReferrer = jest.fn((nodeInfo: NodeInfo) => nodeInfo);
     storage.on('nodeCreated', $nodeCreated)
     storage.on('nodeLostLastReferrer', $nodeLostLastReferrer)
 
@@ -160,7 +160,7 @@ describe('ScatterStorage', () => {
       message: 'this orphan be removed, even it referred task',
       task
     })
-    const result1 = storage.treeshake({ entries: [task] })
+    const result1 = storage.treeshake(task)
     expect(result1.ids).toHaveLength(1)
     expect(orphanNote).toEqual({}) // empty object
 
@@ -169,8 +169,7 @@ describe('ScatterStorage', () => {
 
     const subTasks = task.subTasks
 
-    const result2 = storage.treeshake({
-      entries: [subTasks],
+    const result2 = storage.treeshake(subTasks, {
       skips: (_, nodeInfo) => nodeInfo.proxy === task
     })
     expect(result2.ids).toHaveLength(0)
@@ -181,7 +180,7 @@ describe('ScatterStorage', () => {
     const $beforeDispose = jest.fn((nodes: any[]) => {
       expect(nodes.length).toBe(3)
     })
-    const result3 = storage.treeshake({ entries: [subTasks], beforeDispose: $beforeDispose })
+    const result3 = storage.treeshake([subTasks], { beforeDispose: $beforeDispose })
     expect($beforeDispose).toBeCalledTimes(1)
     expect(result3.ids).toHaveLength(3)
     expect(task).toEqual({})

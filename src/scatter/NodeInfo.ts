@@ -4,7 +4,7 @@ import { Nil } from "../types";
 import { isCollectingDep, hasOwn, makeEmptyLike, specialAccessKey } from "./utils";
 import { NodeWriteAccessAction, ScatterStorage } from "./storage";
 
-export const objToInfoLUT = new WeakMap<any, ScatterNodeInfo>()
+export const objToInfoLUT = new WeakMap<any, NodeInfo>()
 
 const proxyHandler: ProxyHandler<any> = {
   get(target, key, recv) {
@@ -73,7 +73,7 @@ const proxyHandler: ProxyHandler<any> = {
     //
     // note: in any case, the old ref on this property key, must be removed, if presents.
 
-    let newRef: ScatterNodeInfo<any> | undefined
+    let newRef: NodeInfo<any> | undefined
 
     // case 1 checking
     if (
@@ -89,7 +89,7 @@ const proxyHandler: ProxyHandler<any> = {
       // case 1, pass
     } else if (isObject(value)) {
       // case 2, make a new node and clone data into it
-      newRef = new ScatterNodeInfo(self.bus, makeEmptyLike(value), propSchema)
+      newRef = new NodeInfo(self.bus, makeEmptyLike(value), propSchema)
       Object.assign(newRef.proxy, value)
     } else {
       // case 3, no new node
@@ -150,7 +150,7 @@ const proxyHandler: ProxyHandler<any> = {
   },
 }
 
-export class ScatterNodeInfo<T extends object = any> {
+export class NodeInfo<T extends object = any> {
   bus: ScatterStorage<any> | null
 
   referredCount = 0
@@ -159,7 +159,7 @@ export class ScatterNodeInfo<T extends object = any> {
   proxy: T
 
   isArray?: boolean
-  refs?: Record<any, ScatterNodeInfo>
+  refs?: Record<any, NodeInfo>
   refsCount = 0;
 
   constructor(bus: ScatterStorage<any> | null, container: T, schema: PatchedSchema<T> | Nil) {
@@ -209,7 +209,7 @@ export class ScatterNodeInfo<T extends object = any> {
    * 
    * @returns oldRef
    */
-  _setRef(k: keyof T, to: ScatterNodeInfo | Nil): ScatterNodeInfo | undefined {
+  _setRef(k: keyof T, to: NodeInfo | Nil): NodeInfo | undefined {
     const lastRef = this.refsCount && this.refs?.[k]
     if (lastRef) {
       delete this.refs![k]
@@ -254,7 +254,7 @@ export class ScatterNodeInfo<T extends object = any> {
   /** clear this node's content and refs. will not affect id */
   clear() {
     if (this.refs) {
-      Object.values(this.refs).forEach((r) => (r as ScatterNodeInfo)._minusReferredCount())
+      Object.values(this.refs).forEach((r) => (r as NodeInfo)._minusReferredCount())
       this.refs = void 0
       this.refsCount = 0
     }

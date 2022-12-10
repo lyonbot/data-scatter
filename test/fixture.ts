@@ -1,4 +1,4 @@
-import { DumpedNodeInfo } from '../src/scatter';
+import { DumpedNodeData } from '../src/scatter';
 import { createSchemaRegistry, FromSchemaRegistry } from '../src/schema';
 
 export const getSchemaRegistry = () => createSchemaRegistry({
@@ -42,7 +42,7 @@ export type Task = FromSchemaRegistry<ReturnType<typeof getSchemaRegistry>, 'tas
  *                  | }
  * ```
  */
-export const sampleDumpedData1: DumpedNodeInfo[] = [
+export const sampleDumpedData1: DumpedNodeData[] = [
   {
     nodeId: 'task1',
     schemaId: 'task',

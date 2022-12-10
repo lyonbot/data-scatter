@@ -1,7 +1,7 @@
 import { forEach } from "lodash"
 import { PatchedSchema } from "../schema"
 import { Nil } from "../types"
-import { ScatterNodeInfo } from "./ScatterNodeInfo"
+import { NodeInfo } from "./NodeInfo"
 import { ScatterStorage } from "./storage"
 import { OneOrMany, isPromise } from "./utils"
 
@@ -17,7 +17,7 @@ export interface WalkOptions {
 
 type PropertyNameOrFilterFunction =
   | string | number
-  | ((key: string | number, subNodeInfo: ScatterNodeInfo, parentNodeInfo: ScatterNodeInfo) => boolean)
+  | ((key: string | number, subNodeInfo: NodeInfo, parentNodeInfo: NodeInfo) => boolean)
 
 /** 
  * what shall the visitor function return, during `walk`
@@ -44,7 +44,7 @@ export interface WalkStepInfo {
   value: any;
 
   /** all info about this value */
-  nodeInfo: ScatterNodeInfo
+  nodeInfo: NodeInfo
 
   /** equals to `nodeInfo.schema` */
   schema: PatchedSchema<any> | Nil
@@ -94,9 +94,9 @@ const normalizeSelector = (x: PropertyNameOrFilterFunction) => {
  * 
  * note: if `callback` is async function, this will return a `Promise`
  */
-export function walk(storage: ScatterStorage, startsFrom: OneOrMany<string | ScatterNodeInfo | any>, callback: (info: WalkStepInfo) => Promise<WalkCallbackResponse>, opts?: WalkOptions): Promise<void>
-export function walk(storage: ScatterStorage, startsFrom: OneOrMany<string | ScatterNodeInfo | any>, callback: (info: WalkStepInfo) => WalkCallbackResponse, opts?: WalkOptions): void
-export function walk(storage: ScatterStorage, startsFrom: OneOrMany<string | ScatterNodeInfo | any>, callback: (info: WalkStepInfo) => any, opts: WalkOptions = {}): any {
+export function walk(storage: ScatterStorage, startsFrom: OneOrMany<string | NodeInfo | any>, callback: (info: WalkStepInfo) => Promise<WalkCallbackResponse>, opts?: WalkOptions): Promise<void>
+export function walk(storage: ScatterStorage, startsFrom: OneOrMany<string | NodeInfo | any>, callback: (info: WalkStepInfo) => WalkCallbackResponse, opts?: WalkOptions): void
+export function walk(storage: ScatterStorage, startsFrom: OneOrMany<string | NodeInfo | any>, callback: (info: WalkStepInfo) => any, opts: WalkOptions = {}): any {
   let pendingAsyncTaskCount = 0
   let handleAsyncDone: undefined | (() => void)
   let handleAsyncError: undefined | ((error: Error) => void)
@@ -105,7 +105,7 @@ export function walk(storage: ScatterStorage, startsFrom: OneOrMany<string | Sca
   const queue: WalkStepInfo[] = []
   type PartialStepInfo = Omit<WalkStepInfo, 'storage' | 'value' | 'schema' | 'nodeId' | 'key' | 'isVisited' | 'visitedRecords'>;
 
-  const visitedRecordsLUT = new WeakMap<ScatterNodeInfo, WalkStepInfo[]>()
+  const visitedRecordsLUT = new WeakMap<NodeInfo, WalkStepInfo[]>()
 
   const pushQueue = (partials: (PartialStepInfo | Nil)[]) => {
     queue[mode](...(partials as PartialStepInfo[])

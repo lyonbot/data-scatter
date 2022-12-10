@@ -1,42 +1,88 @@
 import { EventEmitter } from "../EventEmitter";
 import { TypeLUT, SchemaRegistry, PatchedSchema } from "../schema"
 import { Nil, KeyOf } from "../types";
-import { ScatterNodeInfo, objToInfoLUT } from "./ScatterNodeInfo";
+import { NodeInfo, objToInfoLUT } from "./NodeInfo";
 import { arrayify, makeEmptyLike, NodeSelector, normalizeNodeSelector, OneOrMany, Tail } from "./utils";
 import { walk, WalkCallbackResponse, WalkOptions, WalkStepInfo } from "./walk";
+import type { NodeContentObserver } from './observe'
 
 export type NodeWriteAccessAction = {
   isDeleted?: boolean;
-  oldRef?: ScatterNodeInfo;
-  newRef?: ScatterNodeInfo;
+  oldRef?: NodeInfo;
+  newRef?: NodeInfo;
   oldValue?: any;
   newValue?: any;
 };
 
-export interface AutoScatterEvents<T extends TypeLUT = any> {
+export interface AutoScatterEvents {
   /**
    * fired when a node is created, before filling content
    */
-  nodeCreated(nodeInfo: ScatterNodeInfo): void
+  nodeCreated(nodeInfo: NodeInfo): void
 
   /** 
    * fired when a node lost last reference from others.
    * 
    * note: maybe someone will make new references laster, therefore, DO NOT DELETE THIS NODE IMMEDIATELY!
    */
-  nodeLostLastReferrer(nodeInfo: ScatterNodeInfo): void
+  nodeLostLastReferrer(nodeInfo: NodeInfo): void
 
-  nodeReadAccess(nodeInfo: ScatterNodeInfo, key: keyof any): void
+  /**
+   * (internal event) only fires while a `NodeContentObserver` collecting dependencies
+   */
+  nodeReadAccess(nodeInfo: NodeInfo, key: keyof any): void
 
-  nodeWriteAccess(nodeInfo: ScatterNodeInfo, key: keyof any, action: NodeWriteAccessAction): void
+  /**
+   * fires when a node's content changes
+   * 
+   * @see {@link NodeContentObserver}
+   */
+  nodeWriteAccess(nodeInfo: NodeInfo, key: keyof any, action: NodeWriteAccessAction): void
 }
 
-export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEmitter<AutoScatterEvents<SchemaTypeLUT>> {
+/**
+ * ScatterStorage is a class that help you creating and manipulating objects and arrays, based on your schemas.
+ * 
+ * You can use `storage.create(schema)` to create objects and arrays, then read and write values to them, 
+ * and ScatterStorage will automatically creates nodes for any nested objects or arrays.
+ * 
+ * You can use the `getNodeInfo(obj)` method to check if a given object or array is a managed node,
+ * and retrieve its associated schema.
+ * 
+ * Besides, it provides `treeshake(entries, opts?)`, `walk(entries, callback, opts?)` and more methods
+ * 
+ * @example
+ * ```ts
+ * const storage = new ScatterStorage({ schemaRegistry: mySchemaRegistry });
+ * 
+ * // create a object / array based on a schema
+ * // then feel free to read / write it
+ * 
+ * const task = storage.create('task');
+ * task.name = 'shopping';
+ * task.subTasks = [{ name: 'buy flowers' }];
+ * 
+ * expect(task).toEqual({
+ *   name: 'shopping',
+ *   subTasks: [{ name: 'buy flowers' }],
+ * });
+ * 
+ * // ScatterStorage will automatically make 2 nodes: the `subTasks` array and the `buy-flowers` Task
+ * // you can use getNodeInfo() to check, if it's a node, it will return node info
+ * 
+ * const subTask1 = task.subTasks[0];
+ * expect(subTask1).toEqual({ name: 'buy flowers' });
+ * 
+ * const $$subTask1 = storage.getNodeInfo(subTask1);
+ * expect($$subTask1.schema).toBe(mySchemaRegistry.get('task'));
+ * ```
+ */
+export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEmitter<AutoScatterEvents> {
   readonly schemaRegistry: SchemaRegistry<SchemaTypeLUT>
   readonly options: ScatterStorageInitOptions<SchemaTypeLUT>
 
-  nodes = new Map<string, ScatterNodeInfo>()
-  orphanNodes = new Set<ScatterNodeInfo>()
+  nodes = new Map<string, NodeInfo>()
+  orphanNodes = new Set<NodeInfo>()
 
   constructor(opts: ScatterStorageInitOptions<SchemaTypeLUT>) {
     super();
@@ -71,7 +117,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
 
     // note: if no schema, consider the type of fillDataWith
     const container = fillDataWith ? makeEmptyLike(fillDataWith) : (schema?.type === 'array' ? [] : {})
-    const nodeInfo = new ScatterNodeInfo<any>(this, container, schema)
+    const nodeInfo = new NodeInfo<any>(this, container, schema)
 
     if (schema && (schema.type !== 'object' && schema.type !== 'array')) throw new Error('Schema type must be object or array')
 
@@ -95,7 +141,7 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
     }
 
     const skips = normalizeNodeSelector(opts.skips)
-    const skipped = new Set<ScatterNodeInfo>()
+    const skipped = new Set<NodeInfo>()
 
     for (let iteration = opts.maxIterations || 100; iteration--;) {
       let killedCount = 0
@@ -114,32 +160,42 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
   }
 
   /**
-   * recursively visit nodes and their children
+   * recursively traverse the tree structure and perform operations on each node,
+   * such as reading or modifying values.
    * 
    * note: if `callback` is async function, this will return a `Promise`
    * 
    * @param startsFrom - one or many (nodeId / NodeInfo / array or object managed by this storage)
+   * @param callback - a callback may return one of this:
+   * 
+   *   - nothing -- continue scan children nodes
+   *   - `'skip-children'` -- skip this node's children
+   *   - `'abort-all` -- stop the whole walk process
+   *   - `{ only: PropertyNameOrFilterFunction[] }`
+   *   - `{ skips: PropertyNameOrFilterFunction[] }`
+   * 
+   *   Where `PropertyNameOrFilterFunction` could be a *key* such as `"name"`, `4`, 
+   *   or a *function* such as `(key, subNodeInfo, parentNodeInfo) => boolean`.
    */
-  walk(startsFrom: OneOrMany<string | ScatterNodeInfo | any>, callback: (info: WalkStepInfo) => Promise<WalkCallbackResponse>, opts?: WalkOptions): Promise<void>
-  walk(startsFrom: OneOrMany<string | ScatterNodeInfo | any>, callback: (info: WalkStepInfo) => WalkCallbackResponse, opts?: WalkOptions): void
+  walk(startsFrom: OneOrMany<string | NodeInfo | any>, callback: (info: WalkStepInfo) => Promise<WalkCallbackResponse>, opts?: WalkOptions): Promise<void>
+  walk(startsFrom: OneOrMany<string | NodeInfo | any>, callback: (info: WalkStepInfo) => WalkCallbackResponse, opts?: WalkOptions): void
   walk(...args: any[]): any {
     return walk(this, ...args as Tail<Parameters<typeof walk>>)
   }
 
   /**
    * scan nodes from some entries, then dispose all unreferenced nodes
+   * 
+   * @param entries - one or many (nodeId / NodeInfo / array or object managed by this storage) 
    */
-  treeshake(opts: {
-    /** one or many (nodeId / NodeInfo / array or object managed by this storage) */
-    entries: OneOrMany<string | ScatterNodeInfo | any>
-
+  treeshake(entries: OneOrMany<string | NodeInfo | any>, opts: {
     /** during first scan, mark more nodes to retain */
     skips?: NodeSelector
 
-    /** called before disposing nodes. this is the last moment you can read the data */
-    beforeDispose?: (nodes: ScatterNodeInfo[]) => void
-  }) {
-    const scanQueue = this.getNodeInfos(opts.entries)
+    /** called with `NodeInfo[]` before disposing nodes. this is the last moment you can read the data */
+    beforeDispose?: (nodes: NodeInfo[]) => void
+  } = {}) {
+    const scanQueue = this.getNodeInfos(entries)
     const toRemove = new Set(this.nodes.values())
 
     for (let pass = 1; pass <= 2; pass++) {
@@ -185,10 +241,10 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
    * 2. object / array that created or mananged by this storage
    * 3. NodeInfo that returned from `getNodeInfo`
    */
-  getNodeInfo<T extends object = any>(query: any): ScatterNodeInfo<T> | null {
-    let o: ScatterNodeInfo<T> | undefined
+  getNodeInfo<T extends object = any>(query: any): NodeInfo<T> | null {
+    let o: NodeInfo<T> | undefined
     if (typeof query === 'string') o = this.nodes.get(query)
-    else if (query instanceof ScatterNodeInfo) o = query;
+    else if (query instanceof NodeInfo) o = query;
     else o = objToInfoLUT.get(query)
 
     if (!o || o.bus !== this) return null
@@ -202,14 +258,14 @@ export class ScatterStorage<SchemaTypeLUT extends TypeLUT = any> extends EventEm
    * @param queries - one or many (nodeId / NodeInfo / array or object managed by this storage)
    * @return always an array of NodeInfo. `null` will NOT be included
    */
-  getNodeInfos(queries: OneOrMany<string | ScatterNodeInfo | any>): ScatterNodeInfo[] {
-    return arrayify(queries).map(x => this.getNodeInfo(x)).filter(Boolean) as ScatterNodeInfo[];
+  getNodeInfos(queries: OneOrMany<string | NodeInfo | any>): NodeInfo[] {
+    return arrayify(queries).map(x => this.getNodeInfo(x)).filter(Boolean) as NodeInfo[];
   }
 
   /**
    * allocate a new id for new node
    */
-  allocateId(nodeInfo: ScatterNodeInfo): string {
+  allocateId(nodeInfo: NodeInfo): string {
     let name = this.options.nodeIdGenerator?.(this, nodeInfo.schema || null)  // user custom id generator
     if (!name || typeof name !== 'string') name = (nodeInfo.schema?.$schemaId || '(unknown)') + idPrefix + (idCounter++).toString(16) // default id generator
 

@@ -11,15 +11,14 @@ export function getPatchedSchemaMeta(x: any): PatchedSchemaMeta | undefined {
   return x && x[patchedMark]
 }
 
-const uuidPrefix = Date.now().toString(36);
-let uuidCounter = 0;
-
 const patchedMark = Symbol('isPatchedSchema')
 
+/**
+ * This is a internal object! Do not use in production code!
+ */
 export interface PatchedSchemaMeta {
   /** the shortest schema name, like `task`, or `task/items` if is anonymous schema */
   schemaId: string;
-  uuid: string;
   /** @internal */
   notReady?: boolean;
   /** get some common schema like "length" of "Array" */
@@ -82,7 +81,6 @@ export function createPatchedSchema<T>(
 
   const meta: PatchedSchemaMeta = {
     schemaId,
-    uuid: uuidPrefix + (uuidCounter++),
     notReady: true,
     getCommonSchema: initCtx.getCommonSchema
   }

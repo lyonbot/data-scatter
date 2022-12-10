@@ -1,20 +1,20 @@
 import { forEach, memoize } from "lodash";
 import { getValueType, isPromise, makeEmptyLike, NodeSelector, normalizeNodeSelector } from "./utils";
-import { ScatterNodeInfo } from "./ScatterNodeInfo";
+import { NodeInfo } from "./NodeInfo";
 import { Nil } from "../types";
 import type { ScatterStorage } from "./storage";
 
-export interface DumpedNodeInfo {
+export interface DumpedNodeData {
   nodeId: string;
   schemaId: string;
   value: any;
   refs: Record<string | number, string>;
 }
 
-type LoaderMethodReturnTypes = DumpedNodeInfo | ScatterNodeInfo | string | Nil
+type LoaderMethodReturnTypes = DumpedNodeData | NodeInfo | string | Nil
 
 export interface LoadIntoStorageOptions<LoaderMethodReturns = MaybePromise<LoaderMethodReturnTypes>> {
-  nodes: DumpedNodeInfo[];
+  nodes: DumpedNodeData[];
   storage: ScatterStorage
 
   /**
@@ -33,9 +33,9 @@ export interface LoadIntoStorageOptions<LoaderMethodReturns = MaybePromise<Loade
 }
 
 export interface LoadIntoStorageResponse {
-  loaded: ScatterNodeInfo[]
-  updated: ScatterNodeInfo[]
-  renamed: { nodeInfo: ScatterNodeInfo, oldId: string }[]
+  loaded: NodeInfo[]
+  updated: NodeInfo[]
+  renamed: { nodeInfo: NodeInfo, oldId: string }[]
 }
 
 type MaybePromise<T> = Promise<T> | T
@@ -43,8 +43,8 @@ type MaybePromise<T> = Promise<T> | T
 /**
  * load nodes into a ScatterStorage
  */
-export function loadIntoStorage<T extends DumpedNodeInfo | ScatterNodeInfo | Nil>(opts: LoadIntoStorageOptions<T>): LoadIntoStorageResponse;
-export function loadIntoStorage<T extends Promise<DumpedNodeInfo | ScatterNodeInfo | Nil>>(opts: LoadIntoStorageOptions<T>): Promise<LoadIntoStorageResponse>;
+export function loadIntoStorage<T extends DumpedNodeData | NodeInfo | Nil>(opts: LoadIntoStorageOptions<T>): LoadIntoStorageResponse;
+export function loadIntoStorage<T extends Promise<DumpedNodeData | NodeInfo | Nil>>(opts: LoadIntoStorageOptions<T>): Promise<LoadIntoStorageResponse>;
 export function loadIntoStorage(opts: LoadIntoStorageOptions): LoadIntoStorageResponse;
 export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
   const { storage } = opts
@@ -56,7 +56,7 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
   const initQueue = [] as (() => void)[]
   let pendingAsyncCount = 0;
 
-  const loadedNodes = {} as Record<string, ScatterNodeInfo>
+  const loadedNodes = {} as Record<string, NodeInfo>
   const afterAllRes: LoadIntoStorageResponse = {
     loaded: [],
     updated: [],
@@ -65,8 +65,8 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
 
   type BindFn = (writeTo: any, key: any) => void;
   const loadNode: (id: string) => BindFn = memoize((id: string): BindFn => {
-    const respond = (storage.nodes.get(id) || loadedNodes[id] || opts.loader?.(id)) as MaybePromise<DumpedNodeInfo | ScatterNodeInfo | Nil>
-    let finalResult: ScatterNodeInfo | null = null
+    const respond = (storage.nodes.get(id) || loadedNodes[id] || opts.loader?.(id)) as MaybePromise<DumpedNodeData | NodeInfo | Nil>
+    let finalResult: NodeInfo | null = null
 
     const queue = [] as Parameters<BindFn>[]
     const handleStaticRespond = (loaderReturns: LoaderMethodReturnTypes) => {
@@ -74,7 +74,7 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
       finalResult = storage.getNodeInfo(loaderReturns)
       if (!finalResult) {
         if (typeof loaderReturns === 'string') throw new Error('Cannot load node: ' + loaderReturns)
-        if (!(loaderReturns instanceof ScatterNodeInfo)) finalResult = loadSingleData(loaderReturns)
+        if (!(loaderReturns instanceof NodeInfo)) finalResult = loadSingleData(loaderReturns)
       }
 
       if (!finalResult || finalResult.bus !== storage) throw new Error('Cannot directly use NodeInfo from another storage. Please make a clone first')
@@ -101,10 +101,10 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
   /**
    * update localLUT, then make bind. this will ensure self-loop works
    */
-  const loadSingleData = (data: DumpedNodeInfo): ScatterNodeInfo => {
+  const loadSingleData = (data: DumpedNodeData): NodeInfo => {
     const schema = storage.schemaRegistry.get(data.schemaId)
 
-    let writeTo: ScatterNodeInfo
+    let writeTo: NodeInfo
 
     const oldNode = storage.nodes.get(data.nodeId)
     if (oldNode) {
@@ -156,8 +156,8 @@ export function loadIntoStorage(opts: LoadIntoStorageOptions): any {
 /** 
  * dump one nodeInfo to a serializable format
  */
-export function dumpOneNode(nodeInfo: ScatterNodeInfo) {
-  const out: DumpedNodeInfo = {
+export function dumpOneNode(nodeInfo: NodeInfo) {
+  const out: DumpedNodeData = {
     nodeId: nodeInfo.id,
     schemaId: nodeInfo.schema?.$schemaId || '',
     value: makeEmptyLike(nodeInfo.container),
@@ -182,7 +182,7 @@ export function dumpNodesFromStorage(opts: {
   storage: ScatterStorage,
 
   /** array of nodeId, actual object or NodeInfo */
-  nodes: Iterable<string | ScatterNodeInfo | any>,
+  nodes: Iterable<string | NodeInfo | any>,
 
   /** do not export these nodes. can be a id list, or a filter function `(id, nodeInfo) => boolean` */
   skips?: NodeSelector
@@ -190,13 +190,13 @@ export function dumpNodesFromStorage(opts: {
   const { storage } = opts
   const skips = normalizeNodeSelector(opts.skips)
 
-  const visited = new Set<ScatterNodeInfo>()
-  const output: DumpedNodeInfo[] = []
-  const skippedNodes: ScatterNodeInfo[] = []
+  const visited = new Set<NodeInfo>()
+  const output: DumpedNodeData[] = []
+  const skippedNodes: NodeInfo[] = []
 
   const queue = storage.getNodeInfos(opts.nodes)
 
-  for (let nodeInfo: ScatterNodeInfo; queue && (nodeInfo = queue.shift()!);) {
+  for (let nodeInfo: NodeInfo; queue && (nodeInfo = queue.shift()!);) {
     if (visited.has(nodeInfo)) continue
     visited.add(nodeInfo)
 

@@ -68,21 +68,26 @@ const registry = createSchemaRegistry({
 ```ts
 const storage = new ScatterStorage({ schemaRegistry: mySchemaRegistry });
 
-// assuming "task" schema is defined, it is an object
-// we create an empty Task Object
-
-const task = storage.create('task');
-
+// create a object / array based on a schema
 // then feel free to read / write it
 
+const task = storage.create('task');
 task.name = 'shopping';
 task.subTasks = [{ name: 'buy flowers' }];
 
-// ScatterStorage will automatically make two task nodes!
-// - use getNodeInfo() to check, if it's a node, it will return node info
+expect(task).toEqual({
+  name: 'shopping',
+  subTasks: [{ name: 'buy flowers' }],
+});
 
-const subTask1 = storage.getNodeInfo(task.subTasks[0]);
-expect(subTask1.schema).toBe(mySchemaRegistry.get('task'));
+// ScatterStorage will automatically make 2 nodes: the `subTasks` array and the `buy-flowers` Task
+// you can use getNodeInfo() to check, if it's a node, it will return node info
+
+const subTask1 = task.subTasks[0];
+expect(subTask1).toEqual({ name: 'buy flowers' });
+
+const $$subTask1 = storage.getNodeInfo(subTask1);
+expect($$subTask1.schema).toBe(mySchemaRegistry.get('task'));
 ```
 
 ### Generate ID for Nodes
@@ -104,19 +109,37 @@ When event is fired, DO NOT IMMEDIATELY start cleaning -- the node might be reus
 
 You can use these methods to do clean-up
 
-#### `storage.treeshake({ entries, skips?, beforeDispose? })`
+#### `storage.treeshake(entries, { skips?, beforeDispose? }?)`
 
 scan nodes from entries, then dispose all unreferenced nodes
 
 - `entries` - one or many (nodeId / NodeInfo / array or object managed by this storage)
-- `skips` - optional, array of nodeId, or `(id: string, nodeInfo: NodeInfo) => boolean`
-- `beforeDispose` -- called with `NodeInfo[]` before disposing nodes. this is the last moment you can read the data
+- `options`
+  - `skips` - optional, array of nodeId, or `(id: string, nodeInfo: NodeInfo) => boolean`
+  - `beforeDispose` -- called with `NodeInfo[]` before disposing nodes. this is the last moment you can read the data
 
 #### `storage.disposeOrphanNodes()`
 
 remove orphan nodes, but will reserve nodes that have self-referencing loop inside
 
 - `skips` - optional, array of nodeId, or `(id: string, nodeInfo: NodeInfo) => boolean`
+
+### Iterate through the Nodes
+
+Use `storage.walk(entries, callback, options?)` to do a BFS search
+
+```js
+// provide one or more start points
+storage.walk(['task1'], step => {
+  if (step.isVisited) return 'skip-children'; // may skip self-referencing loops
+
+  console.log(`visit ${step.path.join('/')}`);
+  console.log(` - nodeId: ${step.nodeId}`);
+  console.log(` - schema: ${step.schema}`);
+});
+```
+
+The callback function
 
 <br/>
 
@@ -228,7 +251,9 @@ task1.tags.push('Shopping');
 
 In the result, all the intermediate values will be discarded -- you can only get the newest and oldest values between `startGatherMutation()` and `stopGatherMutation()`
 
-The result is a `null` or `Map<NodeInfo, Map<string | number, NodeWriteAccessAction>>`
+The result is a `null` or a two-layer Map: `Map<NodeInfo>` -> `Map<string | number>` -> `NodeWriteAccessAction`
+
+- `NodeWriteAccessAction` contains `{ isDeleted, oldValue, newValue, oldRef, newRef }` and the *ref* is a NodeInfo instance
 
 ```js
 if (!changes) {

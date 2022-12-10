@@ -1,5 +1,5 @@
 import { Nil } from "../types";
-import type { ScatterNodeInfo } from "./ScatterNodeInfo";
+import type { NodeInfo } from "./NodeInfo";
 
 export const specialAccessKey = {
   ownKeys: Symbol('ownKeys'),
@@ -48,8 +48,8 @@ export const getValueType = (x: any) => {
 
 export const enum ValueType { OTHER, OBJECT, ARRAY }
 
-export type NodeSelector = Iterable<string> | ((id: string, nodeInfo: ScatterNodeInfo) => boolean)
-export const normalizeNodeSelector = (input: NodeSelector | Nil): (nodeInfo: ScatterNodeInfo) => boolean => {
+export type NodeSelector = Iterable<string> | ((id: string, nodeInfo: NodeInfo) => boolean)
+export const normalizeNodeSelector = (input: NodeSelector | Nil): (nodeInfo: NodeInfo) => boolean => {
   if (!input) return () => false
   if (typeof input === 'function') return n => input(n.id, n)
 
