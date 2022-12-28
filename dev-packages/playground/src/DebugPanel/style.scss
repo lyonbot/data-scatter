@@ -3,8 +3,7 @@
   $padding: 4px;
   $borderColor: #999;
   $fontSize: 11px;
-  $fontFamily: Menlo,
-  monospace;
+  $fontFamily: "Menlo, monospace";
 
   display: flex;
   flex-direction: column;
@@ -16,10 +15,11 @@
     margin: 0;
     white-space: pre-wrap;
     word-break: break-all;
-    font-family: $fontFamily;
+    font-family: #{$fontFamily};
   }
 
   &-row {
+    flex-shrink: 0;
     position: relative;
     padding: $padding;
     padding-left: $indent + $padding;
@@ -31,13 +31,10 @@
     }
 
     &.isError {
-      color: #600;
+      @apply text-red-800;
 
       &::before {
-        position: absolute;
-        inset: 0;
-        background-color: #f99;
-        opacity: 0.3;
+        @apply bg-red-300 inset-0 absolute opacity-30;
         pointer-events: none;
         content: ' ';
         mix-blend-mode: multiply;
@@ -45,13 +42,10 @@
     }
 
     &.isWarn {
-      color: #630;
+      @apply text-yellow-800;
 
       &::before {
-        position: absolute;
-        inset: 0;
-        background-color: #ff9;
-        opacity: 0.3;
+        @apply bg-yellow-300 inset-0 absolute opacity-30;
         pointer-events: none;
         content: ' ';
         mix-blend-mode: multiply;
@@ -77,27 +71,11 @@
   }
 
   &-errorMark {
-    background-color: #c33;
-    color: #fff;
-    width: 1em;
-    padding: 2px;
-    margin: -2px;
-    border-radius: 100%;
-    height: 1em;
-    display: inline-block;
-    text-align: center;
+    @apply bg-red-500 text-white w-4 h-4 rounded-full inline-block text-center text-xs;
   }
 
   &-warnMark {
-    background-color: #ca6;
-    color: #fff;
-    width: 1em;
-    padding: 2px;
-    margin: -2px;
-    border-radius: 100%;
-    height: 1em;
-    display: inline-block;
-    text-align: center;
+    @apply bg-yellow-500 text-white w-4 h-4 rounded-full inline-block text-center text-xs;
   }
 
   &-input {
@@ -119,22 +97,18 @@
     .CodeMirror pre.CodeMirror-line,
     .CodeMirror pre.CodeMirror-line-like {
       font-size: $fontSize;
-      font-family: $fontFamily;
+      font-family: #{$fontFamily};
     }
   }
 
   &-logs {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
+    @apply flex flex-col flex-1 min-h-0 overflow-auto;
 
     &:not(:empty) {
       border-bottom: 1px solid $borderColor;
     }
   }
-  
+
   &-instant {
     @extend .debugPanel-row;
   }

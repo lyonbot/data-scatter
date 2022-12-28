@@ -1,8 +1,9 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
 import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage, loadIntoStorage, dumpOneNode, dumpNodesFromStorage, NodeContentObserver, Watcher } from 'data-scatter'
-import { DebugPanel } from './DebugPanel';
+import { DebugPanel, DebugPanelRef } from './DebugPanel';
 import { MyInspector } from './MyInspector';
+import './index.css';
 
 declare module "data-scatter" {
 
@@ -91,11 +92,19 @@ const global = {
 }
 Object.assign(window, global)
 
+const App = () => {
+  const debugPanelRef = React.useRef<DebugPanelRef>(null)
+
+  return <div className="flex absolute inset-0 gap-4">
+    <div className="flex-1 grow-[2] max-h-full">
+      <DebugPanel placeholder="data.xxx" className='max-h-full' ref={debugPanelRef} />
+    </div>
+
+    <div className="flex-1 overflow-auto">
+      {/* <MyInspector data={global} onClick={(x) => console.log(x)} /> */}
+    </div>
+  </div>
+}
 
 const root = ReactDOM.createRoot(document.getElementById('app')!);
-root.render(<div>
-
-  <DebugPanel placeholder="data.xxx" />
-  <MyInspector data={global} onClick={(x) => console.log(x)} />
-
-</div>)
+root.render(<App />)

@@ -15,7 +15,12 @@ type Props = React.HTMLProps<HTMLDivElement> & {
   placeholder?: string
 }
 
-export const DebugPanel = (_props: Props) => {
+export interface DebugPanelRef {
+  console: Pick<Console, 'log' | 'error' | 'warn' | 'clear'>
+  setCode: (code: string) => void
+}
+
+export const DebugPanel = React.forwardRef<DebugPanelRef, Props>((_props, ref) => {
   const logsDiv = React.useRef<HTMLDivElement>(null)
   const { notice = '👆 Try executing some JavaScript above', placeholder, ...otherProps } = _props
 
@@ -36,7 +41,7 @@ export const DebugPanel = (_props: Props) => {
     const addRecord = (...items: React.ReactElement[]) => updateRecords(x => {
       const origLength = x.length;
       return x.concat(items.map((item, index) => React.cloneElement(item, {
-        key: index + origLength,
+        key: index + '/' + origLength,
         className: 'debugPanel-row ' + (item.props.className || '')
       })));
     });
@@ -58,6 +63,7 @@ export const DebugPanel = (_props: Props) => {
         </div>
         {consolePrint2VDom(args)}
       </div>), console.warn(...args))
+      fakeConsole.clear = () => (updateRecords([]), console.log('%c%s', 'color: #999', '<-- console clear -->'))
     }
 
     return { addRecord, fakeConsole }
@@ -85,11 +91,11 @@ export const DebugPanel = (_props: Props) => {
     div.scrollTo(0, div.scrollHeight)
   }, [records.length])
 
-  React.useEffect(() => {
-    fakeConsole.log('test', window)
-    fakeConsole.error('test', window)
-    fakeConsole.warn('test', window)
-  }, [])
+  // React.useEffect(() => {
+  //   fakeConsole.log('test', window)
+  //   fakeConsole.error('test', window)
+  //   fakeConsole.warn('test', window)
+  // }, [])
 
   //----------------------------------------------------------------
 
@@ -101,6 +107,11 @@ export const DebugPanel = (_props: Props) => {
     const value = get(window, isCodePath)
     return <MyInspector data={value} />
   }, [isCodePath]) || (code ? "Press Enter to Execute" : notice)
+
+  React.useImperativeHandle(ref, () => ({
+    console: fakeConsole,
+    setCode,
+  }), [])
 
   //----------------------------------------------------------------
 
@@ -137,7 +148,7 @@ export const DebugPanel = (_props: Props) => {
       {instantChildren}
     </div>
   </div>;
-};
+});
 
 const consolePrint2VDom = (args: any[]) => {
   const result: React.ReactNode[] = []
