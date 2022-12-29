@@ -15,9 +15,12 @@
     "classnames": "^2.3.2",
     "codemirror": "^5.65.10",
     "data-scatter": "workspace:0.0.0",
+    "github-markdown-css": "^5.1.0",
+    "jotai": "^1.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-inspector": "^6.0.1"
+    "react-inspector": "^6.0.1",
+    "react-markdown": "^8.0.4"
   },
   "devDependencies": {
     "@iconify/icons-mdi": "^1.2.36",

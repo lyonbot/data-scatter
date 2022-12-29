@@ -16,6 +16,8 @@ type Props = React.HTMLProps<HTMLDivElement> & {
 }
 
 export interface DebugPanelRef {
+  /** insert a row into "log" area with custom `<div>` and content */
+  addRecord: (...items: React.ReactElement[]) => void
   console: Pick<Console, 'log' | 'error' | 'warn' | 'clear'>
   setCode: (code: string) => void
 }
@@ -38,6 +40,7 @@ export const DebugPanel = React.forwardRef<DebugPanelRef, Props>((_props, ref) =
   }, []);
 
   const { addRecord, fakeConsole } = React.useMemo(() => {
+    /** insert a row into "log" area with custom `<div>` and content */
     const addRecord = (...items: React.ReactElement[]) => updateRecords(x => {
       const origLength = x.length;
       return x.concat(items.map((item, index) => React.cloneElement(item, {
@@ -109,6 +112,7 @@ export const DebugPanel = React.forwardRef<DebugPanelRef, Props>((_props, ref) =
   }, [isCodePath]) || (code ? "Press Enter to Execute" : notice)
 
   React.useImperativeHandle(ref, () => ({
+    addRecord,
     console: fakeConsole,
     setCode,
   }), [])

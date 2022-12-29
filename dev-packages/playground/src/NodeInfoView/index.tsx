@@ -1,4 +1,5 @@
 import { NodeInfo } from 'data-scatter';
+import classNames from 'classnames';
 import { debounce } from 'lodash';
 import * as React from 'react';
 import { ObjectInspector, ObjectRootLabel, ObjectLabel } from 'react-inspector';
@@ -9,9 +10,12 @@ import { Icon } from '@iconify/react';
 import linkVariant from '@iconify/icons-mdi/link-variant';
 
 import './styles.scss'
-import classNames from 'classnames';
 
-export const NodeInfoView = React.memo((props: { nodeInfo: NodeInfo, showRefNodeId?: boolean }) => {
+export const NodeInfoView = React.memo((props: {
+  nodeInfo: NodeInfo
+  showRefNodeId?: boolean
+  isSticky?: boolean
+}) => {
   const update = useForceUpdate()
   const nodeInfo = props.nodeInfo
   const schema = nodeInfo.schema
@@ -22,7 +26,7 @@ export const NodeInfoView = React.memo((props: { nodeInfo: NodeInfo, showRefNode
     })
   }, [nodeInfo])
 
-  return <div className="rounded border border-gray-300 border-solid shadow m-2 p-2">
+  return <div className="nodeInfoView">
     <div className="nodeInfoView-grid">
 
       <div className="nodeInfoView-label">test</div>
@@ -41,22 +45,27 @@ export const NodeInfoView = React.memo((props: { nodeInfo: NodeInfo, showRefNode
         }
       </div>
 
+      <div className="nodeInfoView-label">Stat</div>
+      <div>
+        Referred by {nodeInfo.referredCount} nodes
+      </div>
+
       <div className="nodeInfoView-label">Content</div>
       <div>
         <table className="nodeInfoView-content">
-          {
-            Object.keys(nodeInfo.proxy).map(key => {
-              const linkTo = nodeInfo.refs?.[key]
-              return <tr key={key}>
-                <th className={classNames(linkTo && 'bg-slate-100 underline text-blue-800')}>{String(key)}</th>
-                <td><MyInspector data={nodeInfo.proxy[key]} /></td>
-              </tr>;
-            })
-          }
+          <tbody>
+            {
+              Object.keys(nodeInfo.proxy).map(key => {
+                const linkTo = nodeInfo.refs?.[key]
+                return <tr key={key}>
+                  <th className={classNames(linkTo && 'bg-slate-100 underline text-blue-800')}>{String(key)}</th>
+                  <td><MyInspector data={nodeInfo.proxy[key]} /></td>
+                </tr>;
+              })
+            }
+          </tbody>
         </table>
       </div>
-
-      <div className="nodeInfoView-label">Actions</div>
     </div>
   </div>
 })

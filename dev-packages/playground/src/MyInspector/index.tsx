@@ -2,6 +2,7 @@ import { debounce } from 'lodash';
 import * as React from 'react';
 import { Inspector, ObjectRootLabel, ObjectLabel } from 'react-inspector';
 import { useLast } from '../hooks';
+import { hoveringItemAtom, useSetAtom } from '../state';
 import './style.scss'
 
 declare global {
@@ -13,7 +14,12 @@ declare global {
   }
 }
 
-const span2data = new WeakMap<any, { upstream: MyInspectorProps, depth: number, name: string, data: any }>()
+interface CallbackPayload {
+  upstream: MyInspectorProps
+  depth: number
+  name: string
+  data: any
+}
 
 function nodeRenderer({ depth, name, data, isNonenumerable, expanded }: any) {
   const child = depth === 0
@@ -23,52 +29,70 @@ function nodeRenderer({ depth, name, data, isNonenumerable, expanded }: any) {
   const upstream = React.useContext(TheCtx)!
   const refMem = useLast({ upstream, depth, name, data })
 
+  const onMouseEnter = useMouseEnterCallback(refMem)
+  const onMouseLeave = useMouseLeaveCallback(refMem)
+  const onClick = useClickCallback(refMem)
+
   return <span
     onMouseEnter={onMouseEnter}
     onMouseLeave={onMouseLeave}
     onClick={onClick}
-    ref={(el) => { el && span2data.set(el, refMem) }}
     className="myInspector-node"
   >
     {child}
   </span>
 }
 
-const onMouseEnter = (ev: React.MouseEvent) => {
-  activeTarget?.classList.remove('isActive')
-  if (ev.currentTarget === activeTarget) return;
+const useMouseEnterCallback = (payload: CallbackPayload) => {
+  const setHoveringItem = useSetAtom(hoveringItemAtom)
+  return React.useCallback((ev: React.MouseEvent) => {
+    activeTarget?.classList.remove('isActive')
+    if (ev.currentTarget === activeTarget) return;
 
-  activeTarget = ev.currentTarget as HTMLElement;
-  activeTarget.classList.add('isActive')
+    activePayload = payload;
+    activeTarget = ev.currentTarget as HTMLElement;
+    activeTarget.classList.add('isActive')
 
-  const rect = activeTarget.getBoundingClientRect()
-  activeTarget.appendChild(popover)
-  const left = Math.min(ev.clientX - rect.left + 10, rect.right - 40)
-  popover.style.left = left + "px"
+    const rect = activeTarget.getBoundingClientRect()
+    activeTarget.appendChild(popover)
+    const left = Math.min(ev.clientX - rect.left + 10, rect.right - 40)
+    popover.style.left = left + "px"
 
-  const { upstream, data, name } = span2data.get(ev.currentTarget)!
-  upstream.onMouseEnter?.({ event: ev.nativeEvent, data, name })
+    const { data, name, upstream } = payload
+    upstream.onMouseEnter?.({ event: ev.nativeEvent, data, name })
+    setHoveringItem({ data, name })
+  }, [payload])
 }
 
-const onMouseLeave = (ev: React.MouseEvent) => {
-  if (ev.currentTarget !== activeTarget) return;
-  activeTarget.classList.remove('isActive')
-  activeTarget = null;
-  revertCopiedTextLater.flush()
-  popover.remove()
+const useMouseLeaveCallback = (payload: CallbackPayload) => {
+  const setHoveringItem = useSetAtom(hoveringItemAtom)
 
-  const { upstream, data, name } = span2data.get(ev.currentTarget)!
-  upstream.onMouseLeave?.({ event: ev.nativeEvent, data, name })
+  return React.useCallback((ev: React.MouseEvent) => {
+    if (ev.currentTarget !== activeTarget) return;
+    activeTarget.classList.remove('isActive')
+    activeTarget = null;
+    activePayload = null;
+    revertCopiedTextLater.flush()
+    popover.remove()
+
+    const { upstream, data, name } = payload
+    upstream.onMouseLeave?.({ event: ev.nativeEvent, data, name })
+    setHoveringItem({ data: null, name: '' })
+  }, [payload])
 }
 
-const onClick = (ev: React.MouseEvent) => {
-  if (ev.currentTarget !== activeTarget) return;
+const useClickCallback = (payload: CallbackPayload) => {
+  return React.useCallback((ev: React.MouseEvent) => {
+    if (ev.currentTarget !== activeTarget) return;
 
-  const { upstream, data, name } = span2data.get(ev.currentTarget)!
-  upstream.onClick?.({ event: ev.nativeEvent, data, name })
+    const { upstream, data, name } = payload
+    upstream.onClick?.({ event: ev.nativeEvent, data, name })
+  }, [payload])
 }
 
 let activeTarget: HTMLSpanElement | null = null;
+let activePayload: CallbackPayload | null = null;
+
 const popover = document.createElement('span')
 popover.className = 'myInspector-popover'
 popover.addEventListener('click', (ev) => ev.stopPropagation(), false)
@@ -77,7 +101,7 @@ const copy = document.createElement('span')
 copy.textContent = 'save'
 copy.className = 'myInspector-button'
 copy.addEventListener('click', () => {
-  const data = span2data.get(activeTarget!)?.data
+  const data = activePayload?.data
   window.$temp2 = window.$temp1
   window.$temp1 = window.$temp0
   window.$temp0 = window.$temp = data
@@ -106,6 +130,11 @@ export const MyInspector = React.memo((_props: MyInspectorProps) => {
   const props = useLast(_props)
 
   return <TheCtx.Provider value={props}>
-    <Inspector data={_props.data} expandLevel={_props.expandLevel} table={_props.table} nodeRenderer={nodeRenderer} />
+    <Inspector
+      data={_props.data}
+      expandLevel={_props.expandLevel}
+      table={!!_props.table}
+      nodeRenderer={nodeRenderer}
+    />
   </TheCtx.Provider>
 })
