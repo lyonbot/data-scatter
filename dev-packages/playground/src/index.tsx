@@ -1,9 +1,10 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage, loadIntoStorage, dumpOneNode, dumpNodesFromStorage, NodeContentObserver, Watcher } from 'data-scatter'
+import { createSchemaRegistry, FromSchemaRegistry, ScatterStorage, loadIntoStorage, dumpOneNode, dumpNodesFromStorage, NodeContentObserver, Watcher, NodeInfo } from 'data-scatter'
 import { DebugPanel, DebugPanelRef } from './DebugPanel';
 import { MyInspector } from './MyInspector';
 import './index.css';
+import { NodeInfoView } from './NodeInfoView';
 
 declare module "data-scatter" {
 
@@ -94,6 +95,13 @@ Object.assign(window, global)
 
 const App = () => {
   const debugPanelRef = React.useRef<DebugPanelRef>(null)
+  const [nodes, setNodes] = React.useState(() => Array.from(storage.nodes.values()))
+
+  React.useEffect(() => {
+    storage.on('nodeCreated', nodeInfo => {
+      setNodes(arr => arr.concat(nodeInfo))
+    })
+  }, [])
 
   return <div className="flex absolute inset-0 gap-4">
     <div className="flex-1 grow-[2] max-h-full">
@@ -101,6 +109,7 @@ const App = () => {
     </div>
 
     <div className="flex-1 overflow-auto">
+      {nodes.map(nodeInfo => <NodeInfoView nodeInfo={nodeInfo} key={nodeInfo.id} />)}
       {/* <MyInspector data={global} onClick={(x) => console.log(x)} /> */}
     </div>
   </div>

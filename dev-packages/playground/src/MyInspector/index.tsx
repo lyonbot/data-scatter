@@ -1,6 +1,6 @@
 import { debounce } from 'lodash';
 import * as React from 'react';
-import { ObjectInspector, ObjectRootLabel, ObjectLabel } from 'react-inspector';
+import { Inspector, ObjectRootLabel, ObjectLabel } from 'react-inspector';
 import { useLast } from '../hooks';
 import './style.scss'
 
@@ -95,6 +95,8 @@ const TheCtx = React.createContext<MyInspectorProps | null>(null)
 
 interface MyInspectorProps {
   data: any
+  expandLevel?: number
+  table?: boolean
   onMouseEnter?: (o: { event: MouseEvent, data: any, name: string }) => void
   onMouseLeave?: (o: { event: MouseEvent, data: any, name: string }) => void
   onClick?: (o: { event: MouseEvent, data: any, name: string }) => void
@@ -104,6 +106,6 @@ export const MyInspector = React.memo((_props: MyInspectorProps) => {
   const props = useLast(_props)
 
   return <TheCtx.Provider value={props}>
-    <ObjectInspector data={_props.data} nodeRenderer={nodeRenderer} />
+    <Inspector data={_props.data} expandLevel={_props.expandLevel} table={_props.table} nodeRenderer={nodeRenderer} />
   </TheCtx.Provider>
 })

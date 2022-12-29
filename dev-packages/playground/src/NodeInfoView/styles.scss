@@ -1,0 +1,30 @@
+.myTag {
+  @apply inline-block bg-green-600 text-white px-2 py-1 leading-none rounded mx-0.5;
+
+  &.isGray {
+    @apply bg-gray-400;
+  }
+
+  &.isBlue {
+    @apply bg-blue-600;
+  }
+}
+
+.nodeInfoView-grid {
+  @apply grid gap-x-4 gap-y-1;
+  font-size: 12px;
+  grid-template-columns: auto 1fr;
+}
+
+.nodeInfoView-label {
+  @apply col-start-1 opacity-50;
+}
+
+.nodeInfoView-content {
+  @apply table-auto border-collapse border-none;
+  @apply text-left;
+
+  td, th {
+    @apply border-solid border border-gray-400 px-2 py-1 leading-none;
+  }
+}
